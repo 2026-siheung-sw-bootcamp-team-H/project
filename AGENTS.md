@@ -50,6 +50,7 @@ Follow a simple conventional commit style with the related issue number:
 
 - Use messages like `chore: 프로젝트 초기 세팅 #1` or `feat: 로그인 API 추가 #6`.
 - Use the issue type prefix from the related issue when possible, such as `chore`, `feat`, `fix`, or `docs`.
+- Do not reuse closed issue numbers for new work. Create a new issue first, then use that issue number in commits and PRs.
 - Keep commits focused on one change.
 - Write issue bodies and pull request descriptions in Korean.
 - Pull requests should include a short summary, validation steps, linked issues, and screenshots for visible frontend changes.
