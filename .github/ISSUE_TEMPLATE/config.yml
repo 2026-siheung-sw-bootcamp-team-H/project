@@ -1,5 +1,0 @@
-blank_issues_enabled: true
-contact_links:
-  - name: 프로젝트 PR 목록
-    url: https://github.com/2026-siheung-sw-bootcamp/project/pulls
-    about: 진행 중인 Pull Request를 확인합니다.
