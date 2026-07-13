@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { getHealth } from "../controllers/health.controller.js";
 
 export const healthRouter = Router();
 
@@ -17,20 +18,17 @@ export const healthRouter = Router();
  *             schema:
  *               type: object
  *               properties:
- *                 status:
- *                   type: string
- *                   example: ok
- *                 service:
- *                   type: string
- *                   example: "@siheung/backend"
- *                 timestamp:
- *                   type: string
- *                   format: date-time
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                       example: ok
+ *                     service:
+ *                       type: string
+ *                       example: "@siheung/backend"
+ *                     timestamp:
+ *                       type: string
+ *                       format: date-time
  */
-healthRouter.get("/", (_request, response) => {
-  response.json({
-    status: "ok",
-    service: "@siheung/backend",
-    timestamp: new Date().toISOString()
-  });
-});
+healthRouter.get("/", getHealth);

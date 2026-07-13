@@ -10,13 +10,6 @@ apps/
   backend/   Express, TypeScript
 ```
 
-- `apps/frontend/src`: 프론트엔드 소스 코드입니다. 현재 화면은 Vite + React 기본 시작 화면입니다.
-- `apps/frontend/public`: Vite가 직접 제공하는 정적 파일을 둡니다.
-- `apps/backend/src/config`: 환경변수, Swagger 같은 서버 설정을 관리합니다.
-- `apps/backend/src/routes`: Express 라우터를 관리합니다. API 기능별로 route 파일을 분리합니다.
-- `apps/backend/src/middlewares`: 404 처리, 에러 처리 같은 공통 Express 미들웨어를 둡니다.
-- `dist`: 빌드 결과물입니다. 직접 수정하거나 커밋하지 않습니다.
-
 ## 실행 명령어
 
 ```bash
@@ -48,17 +41,89 @@ npm run build
 - **React + TypeScript + Vite**: 프론트엔드 개발 서버, HMR, 프로덕션 빌드를 제공합니다.
 - **styled-components**: 프론트엔드 스타일을 TypeScript 컴포넌트와 함께 관리합니다.
 - **Express + TypeScript**: 백엔드 API 서버를 TypeScript로 작성합니다.
-- **프론트엔드 `@` alias**: `@/styles`처럼 `apps/frontend/src` 기준 import를 짧게 작성합니다.
-- **백엔드 모듈 구조**: 서버 코드를 `config`, `routes`, `middlewares`로 분리합니다.
-- **ESLint**: TypeScript, React Hooks, React Refresh 규칙을 검사합니다.
-- **Prettier**: 코드 포맷을 일관되게 맞춥니다.
+- **Zod**: 백엔드 요청값 검증에 사용합니다.
 - **Swagger**: `http://localhost:4000/api-docs`에서 API 문서를 제공합니다.
-- **husky + lint-staged**: 커밋 전에 staged 파일만 ESLint와 Prettier로 검사합니다.
-- **환경변수 예시**: `apps/backend/.env.example`에 `PORT`, `CLIENT_ORIGIN` 예시를 둡니다.
+- **ESLint + Prettier**: 코드 규칙과 포맷을 통일합니다.
+- **husky + lint-staged**: 커밋 전에 staged 파일만 검사합니다.
+
+## 백엔드 폴더 역할
+
+```text
+apps/backend/src/
+  config/       환경변수, Swagger 같은 설정
+  controllers/  요청을 받고 응답을 보내는 계층
+  middlewares/  검증, 에러 처리, 404 처리 같은 공통 처리
+  routes/       API 주소와 controller 연결
+  schemas/      Zod 요청 검증 스키마
+  services/     실제 기능 규칙과 비즈니스 로직
+  types/        공통 TypeScript 타입
+  utils/        공통 헬퍼 함수
+```
+
+현재 예시로 `GET /api/health`가 `routes -> controllers -> services` 흐름으로 분리되어 있습니다.
+
+## 프론트엔드 폴더 역할
+
+```text
+apps/frontend/src/
+  assets/    이미지, 아이콘 같은 정적 리소스
+  services/  백엔드 API 요청 함수와 apiClient
+  types/     공통 TypeScript 타입
+```
+
+주제가 정해지면 아래 폴더를 추가해서 확장하면 됩니다.
+
+```text
+components/  공용 UI 컴포넌트
+pages/       라우트에 연결되는 페이지 컴포넌트
+routes/      프론트 라우터 설정
+layouts/     공통 화면 레이아웃
+hooks/       커스텀 React hook
+stores/      전역 상태 관리
+utils/       순수 유틸 함수
+```
+
+## API 응답 형태
+
+성공 응답은 공통으로 `data` 안에 담습니다.
+
+```json
+{
+  "data": {
+    "status": "ok"
+  }
+}
+```
+
+에러 응답은 `error` 안에 담습니다.
+
+```json
+{
+  "error": {
+    "message": "Invalid request."
+  }
+}
+```
+
+## API
+
+- Backend guide: `GET http://localhost:4000/`
+- Health API: `GET http://localhost:4000/api/health`
+- Swagger UI: `GET http://localhost:4000/api-docs`
+
+Health API 응답 예시:
+
+```json
+{
+  "data": {
+    "status": "ok",
+    "service": "@siheung/backend",
+    "timestamp": "2026-07-10T00:00:00.000Z"
+  }
+}
+```
 
 ## Git Hook
-
-이 프로젝트는 husky와 lint-staged로 `pre-commit` 훅을 사용합니다.
 
 `git commit`을 실행하면 staged 파일에 대해 아래 작업이 자동 실행됩니다.
 
@@ -69,36 +134,16 @@ npm run build
 
 ## 이슈와 PR
 
-이슈 템플릿과 PR 템플릿을 제공합니다.
-
-- **버그 제보**: 오류나 예상과 다른 동작을 등록합니다. 제목 prefix는 `fix: `입니다.
-- **기능 요청**: 새 기능이나 개선 아이디어를 등록합니다. 제목 prefix는 `feat: `입니다.
-- **일반 작업**: 설정, 문서, 리팩터링 같은 작업을 등록합니다. 제목 prefix는 `chore: `입니다.
-- **PR 템플릿**: 작업 내용, 관련 이슈, 검증 방법, 화면 변경 여부를 작성합니다.
+이슈와 PR 본문은 한국어로 작성합니다.
 
 커밋 메시지는 관련 이슈 번호를 포함합니다.
 
 ```bash
-git commit -m "chore: 프로젝트 초기 모노레포 세팅 #1"
+git commit -m "chore: 프로젝트 초기 세팅 #1"
 git commit -m "feat: 로그인 API 추가 #6"
 ```
 
 PR 본문에 `close #이슈번호`를 작성하면 PR이 merge될 때 해당 이슈가 자동으로 닫힙니다.
-
-## API
-
-- Health API: `GET http://localhost:4000/api/health`
-- Swagger UI: `GET http://localhost:4000/api-docs`
-
-Health API 응답 예시:
-
-```json
-{
-  "status": "ok",
-  "service": "@siheung/backend",
-  "timestamp": "2026-07-10T00:00:00.000Z"
-}
-```
 
 ## 참고
 

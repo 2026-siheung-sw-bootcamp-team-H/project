@@ -5,9 +5,9 @@
 This repository is an npm workspaces monorepo.
 
 - `apps/frontend`: React + TypeScript + Vite app using `styled-components`.
-- `apps/frontend/src`: Frontend source files such as `App.tsx`, `main.tsx`, and shared styles.
+- `apps/frontend/src`: Frontend source files. Use `services/` for API clients and `types/` for shared frontend types.
 - `apps/backend`: Express + TypeScript API server.
-- `apps/backend/src`: Backend source files. Use `config/`, `routes/`, and `middlewares/` for server modules.
+- `apps/backend/src`: Backend source files. Use `config/`, `routes/`, `controllers/`, `services/`, `schemas/`, `middlewares/`, `types/`, and `utils/` for server modules.
 - `tsconfig.base.json`: Shared TypeScript compiler options.
 - `dist` folders are build outputs and should not be edited or committed.
 

@@ -5,6 +5,7 @@ import { errorHandler } from "./middlewares/error-handler.js";
 import { notFoundHandler } from "./middlewares/not-found-handler.js";
 import { docsRouter } from "./routes/docs.routes.js";
 import { healthRouter } from "./routes/health.routes.js";
+import { rootRouter } from "./routes/root.routes.js";
 
 export function createApp() {
   const app = express();
@@ -12,6 +13,7 @@ export function createApp() {
   app.use(cors({ origin: env.clientOrigin }));
   app.use(express.json());
 
+  app.use("/", rootRouter);
   app.use("/api-docs", docsRouter);
   app.use("/api/health", healthRouter);
   app.use(notFoundHandler);
