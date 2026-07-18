@@ -1,0 +1,15 @@
+.git
+.github
+.husky
+.agents
+apps/frontend
+node_modules
+**/node_modules
+dist
+**/dist
+.env
+.env.*
+coverage
+npm-debug.log*
+*.tsbuildinfo
+README.md
