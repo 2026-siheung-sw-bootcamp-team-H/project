@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply min-w-80 bg-slate-950 text-slate-100 antialiased;
+  }
+
+  button,
+  a {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950;
+  }
+}
