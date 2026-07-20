@@ -1,0 +1,32 @@
+receivers:
+  filelog/waf:
+    include:
+      - /var/log/waf/modsecurity/audit/modsec_audit.log
+    start_at: end
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+  batch:
+  redaction:
+    allow_all_keys: false
+    allowed_keys:
+      - event.name
+      - http.request.method
+      - url.path
+      - http.response.status_code
+
+exporters:
+  otlphttp/backend:
+    logs_endpoint: http://backend:4000/api/telemetry/otlp/v1/logs
+    encoding: json
+    headers:
+      x-telemetry-token: ${env:TELEMETRY_TOKEN}
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog/waf]
+      processors: [memory_limiter, redaction, batch]
+      exporters: [otlphttp/backend]

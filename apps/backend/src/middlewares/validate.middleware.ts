@@ -28,7 +28,8 @@ export function validateRequest(schemas: RequestSchemas): RequestHandler {
 
     request.body = result.data.body;
     request.params = result.data.params;
-    request.query = result.data.query;
+    // Express 5 exposes `query` as a getter. Validation still runs here, while
+    // handlers read the original parsed query object instead of replacing it.
     next();
   };
 }

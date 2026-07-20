@@ -1,4 +1,82 @@
+import { z } from "zod";
+
+const developmentSecret = "development-only-secret-change-before-production";
+
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    PORT: z.coerce.number().int().positive().default(4000),
+    CLIENT_ORIGIN: z.string().default("http://localhost:3000"),
+    DATABASE_URL: z
+      .string()
+      .default("postgresql://siheung:siheung_dev@localhost:5432/siheung?schema=public"),
+    REDIS_URL: z.string().default("redis://localhost:6379"),
+    QUEUE_ENABLED: z.stringbool().default(false),
+    JWT_SECRET: z.string().min(32).default(developmentSecret),
+    JWT_EXPIRES_IN: z.string().default("30m"),
+    ADMIN_EMAIL: z.email().default("admin@sentinel.local"),
+    ADMIN_PASSWORD: z.string().min(8).default("demo1234"),
+    ADMIN_NAME: z.string().default("보안 관리자"),
+    HMAC_SECRET: z.string().min(32).default(`${developmentSecret}-hmac`),
+    TELEMETRY_TOKEN: z.string().min(16).default(`${developmentSecret}-telemetry`),
+    SAFE_REPLAY_RETENTION_HOURS: z.coerce.number().int().positive().default(24),
+    MAX_CAPTURE_BODY_BYTES: z.coerce.number().int().positive().max(1_048_576).default(32_768),
+    AI_PROVIDER: z.enum(["none", "openai", "gemini"]).default("none"),
+    OPENAI_API_KEY: z.string().optional(),
+    GEMINI_API_KEY: z.string().optional(),
+    AI_MODEL: z.string().min(1).optional(),
+    AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(20_000),
+    ADVERSARIAL_MAX_ROUNDS: z.coerce.number().int().min(1).max(5).default(3),
+    CLEANUP_INTERVAL_MS: z.coerce.number().int().min(60_000).default(3_600_000),
+    WAF_RULE_DIR: z.string().default("./var/waf-rules"),
+    WAF_RELOAD_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(15_000)
+  })
+  .superRefine((value, context) => {
+    if (value.AI_PROVIDER === "openai" && !value.OPENAI_API_KEY) {
+      context.addIssue({
+        code: "custom",
+        path: ["OPENAI_API_KEY"],
+        message: "OPENAI_API_KEY is required"
+      });
+    }
+    if (value.AI_PROVIDER === "gemini" && !value.GEMINI_API_KEY) {
+      context.addIssue({
+        code: "custom",
+        path: ["GEMINI_API_KEY"],
+        message: "GEMINI_API_KEY is required"
+      });
+    }
+  });
+
+const parsed = envSchema.parse(process.env);
+
+if (parsed.NODE_ENV === "production" && parsed.JWT_SECRET === developmentSecret) {
+  throw new Error("JWT_SECRET must be changed in production.");
+}
+
 export const env = {
-  port: Number(process.env.PORT ?? 4000),
-  clientOrigin: process.env.CLIENT_ORIGIN ?? "http://localhost:3000"
-};
+  nodeEnv: parsed.NODE_ENV,
+  port: parsed.PORT,
+  clientOrigin: parsed.CLIENT_ORIGIN,
+  databaseUrl: parsed.DATABASE_URL,
+  redisUrl: parsed.REDIS_URL,
+  queueEnabled: parsed.QUEUE_ENABLED,
+  jwtSecret: parsed.JWT_SECRET,
+  jwtExpiresIn: parsed.JWT_EXPIRES_IN,
+  adminEmail: parsed.ADMIN_EMAIL,
+  adminPassword: parsed.ADMIN_PASSWORD,
+  adminName: parsed.ADMIN_NAME,
+  hmacSecret: parsed.HMAC_SECRET,
+  telemetryToken: parsed.TELEMETRY_TOKEN,
+  safeReplayRetentionHours: parsed.SAFE_REPLAY_RETENTION_HOURS,
+  maxCaptureBodyBytes: parsed.MAX_CAPTURE_BODY_BYTES,
+  aiProvider: parsed.AI_PROVIDER,
+  openAiApiKey: parsed.OPENAI_API_KEY,
+  geminiApiKey: parsed.GEMINI_API_KEY,
+  aiModel: parsed.AI_MODEL,
+  aiTimeoutMs: parsed.AI_TIMEOUT_MS,
+  adversarialMaxRounds: parsed.ADVERSARIAL_MAX_ROUNDS,
+  cleanupIntervalMs: parsed.CLEANUP_INTERVAL_MS,
+  wafRuleDir: parsed.WAF_RULE_DIR,
+  wafReloadTimeoutMs: parsed.WAF_RELOAD_TIMEOUT_MS
+} as const;
