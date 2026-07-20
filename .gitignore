@@ -6,3 +6,5 @@ npm-debug.log*
 coverage
 .DS_Store
 *.tsbuildinfo
+waf/rules/waf-reload-request.json
+waf/rules/waf-reload-status.json

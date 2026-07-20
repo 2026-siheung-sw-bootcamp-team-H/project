@@ -1,13 +1,75 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: siheung
+      POSTGRES_USER: siheung
+      POSTGRES_PASSWORD: siheung_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U siheung -d siheung"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   backend:
+    image: siheung-backend:latest
     build:
       context: .
       dockerfile: Dockerfile.backend
+    command:
+      [
+        "sh",
+        "-c",
+        "./node_modules/.bin/prisma migrate deploy --schema apps/backend/prisma/schema.prisma && node apps/backend/dist/index.js"
+      ]
     environment:
+      NODE_ENV: production
       PORT: 4000
       CLIENT_ORIGIN: http://localhost:3000
-    ports:
-      - "4000:4000"
+      DATABASE_URL: postgresql://siheung:siheung_dev@postgres:5432/siheung?schema=public
+      REDIS_URL: redis://redis:6379
+      QUEUE_ENABLED: "true"
+      JWT_SECRET: ${JWT_SECRET:-local-compose-jwt-secret-change-this-value}
+      HMAC_SECRET: ${HMAC_SECRET:-local-compose-hmac-secret-change-this-value}
+      TELEMETRY_TOKEN: ${TELEMETRY_TOKEN:-local-compose-telemetry-service-token}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-demo1234}
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4.1-mini}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-20000}
+      ADVERSARIAL_MAX_ROUNDS: ${ADVERSARIAL_MAX_ROUNDS:-3}
+      CLEANUP_INTERVAL_MS: ${CLEANUP_INTERVAL_MS:-3600000}
+      WAF_RULE_DIR: /app/var/waf-rules
+      WAF_RELOAD_TIMEOUT_MS: ${WAF_RELOAD_TIMEOUT_MS:-15000}
+    expose:
+      - "4000"
+    volumes:
+      - ./waf/rules:/app/var/waf-rules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -19,5 +81,92 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 10s
     restart: unless-stopped
+
+  worker:
+    image: siheung-backend:latest
+    command: ["node", "apps/backend/dist/worker.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://siheung:siheung_dev@postgres:5432/siheung?schema=public
+      REDIS_URL: redis://redis:6379
+      QUEUE_ENABLED: "true"
+      JWT_SECRET: ${JWT_SECRET:-local-compose-jwt-secret-change-this-value}
+      HMAC_SECRET: ${HMAC_SECRET:-local-compose-hmac-secret-change-this-value}
+      TELEMETRY_TOKEN: ${TELEMETRY_TOKEN:-local-compose-telemetry-service-token}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-demo1234}
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4.1-mini}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-20000}
+      ADVERSARIAL_MAX_ROUNDS: ${ADVERSARIAL_MAX_ROUNDS:-3}
+      CLEANUP_INTERVAL_MS: ${CLEANUP_INTERVAL_MS:-3600000}
+      WAF_RULE_DIR: /app/var/waf-rules
+      WAF_RELOAD_TIMEOUT_MS: ${WAF_RELOAD_TIMEOUT_MS:-15000}
+    volumes:
+      - ./waf/rules:/app/var/waf-rules
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  waf:
+    image: owasp/modsecurity-crs:4.25-nginx-lts
+    entrypoint: ["/bin/sh", "/opt/siheung/start-with-reloader.sh"]
+    command: ["nginx", "-g", "daemon off;"]
+    environment:
+      BACKEND: http://backend:4000
+      PORT: 8080
+      MODSEC_RULE_ENGINE: "on"
+      MODSEC_AUDIT_ENGINE: RelevantOnly
+      MODSEC_AUDIT_LOG: /var/log/modsecurity/audit/modsec_audit.log
+      MODSEC_AUDIT_LOG_PARTS: AIJDEFHZ
+      BLOCKING_PARANOIA: 1
+      DETECTION_PARANOIA: 1
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./waf/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:ro
+      - ./waf/rules:/opt/siheung/state
+      - ./waf/reload-on-change.sh:/opt/siheung/reload-on-change.sh:ro
+      - ./waf/start-with-reloader.sh:/opt/siheung/start-with-reloader.sh:ro
+      - waf-logs:/var/log
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.136.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    environment:
+      TELEMETRY_TOKEN: ${TELEMETRY_TOKEN:-local-compose-telemetry-service-token}
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - waf-logs:/var/log/waf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:3
+    profiles: ["search"]
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+volumes:
+  postgres-data:
+  redis-data:
+  waf-logs:
+  opensearch-data:

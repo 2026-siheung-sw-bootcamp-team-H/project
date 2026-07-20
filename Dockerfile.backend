@@ -1,18 +1,17 @@
-FROM node:24-alpine AS dependencies
-
-WORKDIR /app
-COPY package.json package-lock.json ./
-COPY apps/backend/package.json apps/backend/package.json
-RUN npm ci --omit=dev --ignore-scripts --workspace @siheung/backend
-
 FROM node:24-alpine AS build
 
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/backend/package.json apps/backend/tsconfig.json apps/backend/
-RUN npm ci --ignore-scripts --workspace @siheung/backend
+COPY apps/backend/prisma apps/backend/prisma
+
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci --ignore-scripts --fetch-retries=5 --workspace @siheung/backend
+RUN npm run prisma:generate --workspace @siheung/backend
+
 COPY apps/backend/src apps/backend/src
-RUN npm run build --workspace @siheung/backend
+RUN npm run build --workspace @siheung/backend \
+  && npm prune --omit=dev --workspace @siheung/backend
 
 FROM node:24-alpine AS runtime
 
@@ -20,8 +19,9 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 RUN addgroup -S nodejs && adduser -S backend -G nodejs
-COPY --from=dependencies --chown=backend:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=backend:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=backend:nodejs /app/apps/backend/dist ./apps/backend/dist
+COPY --from=build --chown=backend:nodejs /app/apps/backend/prisma ./apps/backend/prisma
 COPY --chown=backend:nodejs apps/backend/package.json ./apps/backend/package.json
 
 USER backend
