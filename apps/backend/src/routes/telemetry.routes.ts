@@ -1,3 +1,4 @@
+import { RequestEventSource } from "@prisma/client";
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
@@ -11,6 +12,9 @@ import { validateRequest } from "../middlewares/validate.middleware.js";
 
 const telemetryEvent = z.object({
   eventId: z.string().min(8).max(128).optional(),
+  protectedServiceId: z.string().uuid().optional(),
+  source: z.nativeEnum(RequestEventSource).optional(),
+  simulationId: z.string().uuid().optional(),
   method: z.string().min(1).max(16),
   path: z.string().min(1).max(2048),
   query: z.record(z.string(), z.unknown()).default({}),

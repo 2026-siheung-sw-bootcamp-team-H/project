@@ -1,3 +1,4 @@
+import { RequestEventSource } from "@prisma/client";
 import type { RequestHandler } from "express";
 import { randomUUID } from "node:crypto";
 import { prisma } from "../config/database.js";
@@ -32,6 +33,9 @@ export const ingestRequestEvent: RequestHandler = async (request, response) => {
     },
     {
       eventId: body.eventId ?? randomUUID(),
+      protectedServiceId: body.protectedServiceId,
+      source: body.source ?? RequestEventSource.TELEMETRY,
+      simulationId: body.simulationId,
       responseStatus: body.responseStatus,
       contentType: body.contentType,
       userAgent: body.userAgent
@@ -102,6 +106,14 @@ export const ingestOtlpLogs: RequestHandler = async (request, response) => {
       typeof transaction.response === "object" && transaction.response !== null
         ? (transaction.response as Record<string, unknown>)
         : {};
+    const auditHeaders =
+      typeof requestData.headers === "object" && requestData.headers !== null
+        ? (requestData.headers as Record<string, unknown>)
+        : {};
+    const simulationHeader = Object.entries(auditHeaders).find(
+      ([key]) => key.toLowerCase() === "x-aegis-simulation-id"
+    )?.[1];
+    const simulationId = typeof simulationHeader === "string" ? simulationHeader : undefined;
     const uri = typeof requestData.uri === "string" ? requestData.uri : "/telemetry/unknown";
     const parsedUrl = new URL(uri, "http://telemetry.local");
     const query = Object.fromEntries(parsedUrl.searchParams.entries());
@@ -135,6 +147,8 @@ export const ingestOtlpLogs: RequestHandler = async (request, response) => {
       },
       {
         eventId: `waf:${eventId}`,
+        source: simulationId ? RequestEventSource.SIMULATION : RequestEventSource.TELEMETRY,
+        simulationId,
         responseStatus:
           typeof responseData.http_code === "number" ? responseData.http_code : undefined,
         contentType: "application/json",

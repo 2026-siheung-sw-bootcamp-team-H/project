@@ -1,161 +1,111 @@
-import { products } from "@/data/shopData";
-import { requestLogs, signatureRules } from "@/data/mockData";
+import { products as productPresentation } from "@/data/shopData";
 import { queryClient } from "@/lib/queryClient";
-import type { AttackCategory, RequestLog } from "@/types/domain";
+import { apiClient, ApiClientError } from "@/services/apiClient";
 import type { Product, ShopRequestResult } from "@/types/shop";
 
-const delay = (milliseconds = 220) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+type BackendProduct = Pick<
+  Product,
+  "id" | "name" | "englishName" | "category" | "price" | "rating" | "reviewCount" | "description"
+> &
+  Partial<Product>;
 
-function analyze(value: string): AttackCategory | null {
-  let decoded = value.replace(/\+/g, " ").toLowerCase();
-  try {
-    decoded = decodeURIComponent(decoded);
-  } catch {
-    // Malformed encoding is evaluated as-is and remains visible in the security log.
-  }
-  if (/union\s*(?:\/\*.*?\*\/\s*)?select|or\s+['\d].*?=.*?['\d]/i.test(decoded)) {
-    return "SQL_INJECTION";
-  }
-  if (/<\s*(script|img|svg)|on(error|load|click)\s*=|javascript:/i.test(decoded)) {
-    return "XSS";
-  }
-  if (/\.\.\/|\.\.\\|%2e%2e/i.test(value)) return "PATH_TRAVERSAL";
-  return null;
-}
-
-function recordRequest({
-  method,
-  path,
-  body = "",
-  category = null,
-  blocked = false,
-  statusCode = 200
-}: {
-  method: "GET" | "POST";
-  path: string;
-  body?: string;
-  category?: AttackCategory | null;
-  blocked?: boolean;
-  statusCode?: number;
-}) {
-  const id = `log-shop-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const rawRequest = `${method} ${path} HTTP/1.1\nHost: demo-shop.local\nUser-Agent: DemoShop Browser${body ? `\nContent-Type: application/json\n\n${body}` : ""}`;
-  let normalized = `${path} ${body}`.toLowerCase();
-  try {
-    normalized = decodeURIComponent(normalized);
-  } catch {
-    // Preserve malformed input for operator review.
-  }
-  normalized = normalized.replace(/[^a-z0-9가-힣./]+/g, " ");
-  const log: RequestLog = {
-    id,
-    occurredAt: new Date().toISOString(),
-    method,
-    path,
-    ip: "127.0.0.1",
-    userAgent: "DemoShop Browser",
-    classification: category ? "attack" : "normal",
-    action: blocked ? "blocked" : "allowed",
-    attackCategory: category,
-    rawRequest,
-    normalizedRequest: normalized.trim(),
-    tokens: normalized
-      .split(/\s+/)
-      .filter((token) => token.length > 2)
-      .slice(0, 10),
-    statusCode: blocked ? 403 : statusCode
+function enrichProduct(product: BackendProduct): Product {
+  const presentation = productPresentation.find((item) => item.id === product.id);
+  return {
+    id: product.id,
+    name: product.name,
+    englishName: product.englishName,
+    category: product.category,
+    price: product.price,
+    rating: product.rating,
+    reviewCount: product.reviewCount,
+    description: product.description,
+    originalPrice: product.originalPrice ?? presentation?.originalPrice,
+    details: product.details ?? presentation?.details ?? ["Demo Shop 상품"],
+    colors: product.colors ?? presentation?.colors ?? ["Default"],
+    imageUrl:
+      product.imageUrl ??
+      presentation?.imageUrl ??
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1200&q=80",
+    badge: product.badge ?? presentation?.badge,
+    featured: product.featured ?? presentation?.featured
   };
-  requestLogs.unshift(log);
-  void queryClient.invalidateQueries({ queryKey: ["logs"] });
-  void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-  return id;
 }
 
-function isBlocked(category: AttackCategory | null) {
-  return Boolean(
-    category &&
-      signatureRules.some((rule) => rule.category === category && rule.status === "active")
-  );
+async function refreshSecurityViews() {
+  void Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["logs"] }),
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+  ]).catch(() => undefined);
 }
 
 export const shopApi = {
-  async getProducts(): Promise<ShopRequestResult<Product[]>> {
-    await delay();
-    const requestId = recordRequest({ method: "GET", path: "/demo-shop/products" });
-    return { data: products, requestId, blocked: false };
-  },
-
-  async getProduct(id: string): Promise<ShopRequestResult<Product>> {
-    await delay();
-    const category = analyze(id);
-    const blocked = isBlocked(category);
-    const requestId = recordRequest({
-      method: "GET",
-      path: `/demo-shop/products?id=${encodeURIComponent(id)}`,
-      category,
-      blocked,
-      statusCode: products.some((product) => product.id === id) ? 200 : 404
-    });
-    if (blocked) throw new Error(`WAF가 요청을 차단했습니다. Request ID: ${requestId}`);
-    const product = products.find((item) => item.id === id);
-    if (!product) throw new Error("상품을 찾을 수 없습니다.");
-    return { data: product, requestId, blocked: false };
+  async getProduct(productId: string): Promise<ShopRequestResult<Product>> {
+    const result = await apiClient<ShopRequestResult<BackendProduct>>(
+      `/demo-shop/products?id=${encodeURIComponent(productId)}`
+    );
+    await refreshSecurityViews();
+    return { ...result, data: enrichProduct(result.data) };
   },
 
   async search(query: string): Promise<ShopRequestResult<Product[]>> {
-    await delay(320);
-    const category = analyze(query);
-    const blocked = isBlocked(category);
-    const requestId = recordRequest({
-      method: "GET",
-      path: `/demo-shop/search?q=${encodeURIComponent(query)}`,
-      category,
-      blocked
-    });
-    if (blocked) return { data: [], requestId, blocked: true };
-    const normalizedQuery = query.trim().toLowerCase();
-    const data = category
-      ? []
-      : products.filter((product) =>
-          [product.name, product.englishName, product.description, product.category]
-            .join(" ")
-            .toLowerCase()
-            .includes(normalizedQuery)
-        );
-    return { data, requestId, blocked: false };
+    try {
+      const result = await apiClient<ShopRequestResult<BackendProduct[]>>(
+        `/demo-shop/search?q=${encodeURIComponent(query)}`,
+        { acceptErrorData: true }
+      );
+      await refreshSecurityViews();
+      return { ...result, data: result.data.map(enrichProduct) };
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 403) {
+        await refreshSecurityViews();
+        return { data: [], requestId: "", blocked: true };
+      }
+      throw error;
+    }
+  },
+
+  async runAttackSimulation(
+    category: "SQL_INJECTION" | "XSS" | "PATH_TRAVERSAL",
+    payload: string
+  ): Promise<ShopRequestResult<Product[]>> {
+    try {
+      const result = await apiClient<ShopRequestResult<BackendProduct[]>>(
+        `/demo-shop/search?q=${encodeURIComponent(payload)}`,
+        {
+          acceptErrorData: true,
+          headers: {
+            "x-aegis-simulation-id": crypto.randomUUID(),
+            "x-aegis-test-category": category
+          }
+        }
+      );
+      await refreshSecurityViews();
+      return { ...result, data: result.data.map(enrichProduct) };
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 403) {
+        await refreshSecurityViews();
+        return { data: [], requestId: "", blocked: true };
+      }
+      throw error;
+    }
   },
 
   async login(email: string, password: string) {
-    await delay(350);
-    const category = analyze(`${email} ${password}`);
-    const blocked = isBlocked(category);
-    const success = email === "shopper@demo.local" && password === "shop1234";
-    const requestId = recordRequest({
-      method: "POST",
-      path: "/demo-shop/login",
-      body: JSON.stringify({ email, password: "••••••••" }),
-      category,
-      blocked,
-      statusCode: success ? 200 : 401
-    });
-    if (blocked) throw new Error(`보안 정책에 의해 요청이 차단되었습니다. ${requestId}`);
-    if (!success) throw new Error("이메일 또는 비밀번호가 올바르지 않습니다.");
-    return { customer: { name: "데모 쇼퍼", email }, requestId };
+    const result = await apiClient<{
+      customer: { name: string; email: string };
+      requestId: string;
+    }>("/demo-shop/login", { method: "POST", body: { email, password } });
+    await refreshSecurityViews();
+    return result;
   },
 
   async createReview(productId: string, content: string) {
-    await delay(350);
-    const category = analyze(content);
-    const blocked = isBlocked(category);
-    const requestId = recordRequest({
-      method: "POST",
-      path: "/demo-shop/reviews",
-      body: JSON.stringify({ productId, content }),
-      category,
-      blocked,
-      statusCode: 201
-    });
-    if (blocked) return { accepted: false, blocked: true, requestId };
-    return { accepted: true, blocked: false, requestId };
+    const result = await apiClient<{ accepted: boolean; blocked: boolean; requestId: string }>(
+      "/demo-shop/reviews",
+      { method: "POST", body: { productId, content }, acceptErrorData: true }
+    );
+    await refreshSecurityViews();
+    return result;
   }
 };

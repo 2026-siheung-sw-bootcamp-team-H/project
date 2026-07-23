@@ -1,8 +1,16 @@
-import { useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, LockKeyhole, Mail, Orbit, ShieldCheck } from "lucide-react";
+import { lazy, Suspense, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { BrandLogo } from "@/components/BrandLogo";
+import { ReconstructionCanvas } from "@/components/ReconstructionCanvas";
 import { platformApi } from "@/services/platformApi";
 import { useAuthStore } from "@/stores/authStore";
+
+const DefenseLatticeScene = lazy(() =>
+  import("@/components/DefenseLatticeScene").then((module) => ({
+    default: module.DefenseLatticeScene
+  }))
+);
 
 export function LoginPage() {
   const [email, setEmail] = useState("admin@sentinel.local");
@@ -33,71 +41,107 @@ export function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen bg-[#111214] text-white lg:grid-cols-[minmax(360px,0.9fr)_1.1fr]">
-      <section className="relative hidden flex-col justify-between overflow-hidden bg-[#5865f2] p-12 lg:flex xl:p-16">
-        <Link to="/onboarding" className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-lg bg-white/15">
-            <Orbit className="size-5" />
-          </span>
-          <strong>Aegis Loop</strong>
-        </Link>
-        <div className="relative z-10 max-w-lg">
-          <p className="text-sm font-semibold text-indigo-100">Operator console</p>
-          <h1 className="mt-4 text-5xl font-black leading-[1.02] tracking-[-0.05em]">
-            방어의 마지막 결정은
-            <br />
-            관리자가 합니다.
-          </h1>
-          <p className="mt-6 text-base leading-7 text-indigo-100">
-            AI는 우회 공격을 만들고 룰을 보강하지만, 운영 환경에 적용하는 결정은 항상 관리자가 검증
-            근거를 확인한 뒤 내립니다.
-          </p>
+    <main className="relative grid min-h-screen overflow-hidden bg-[#02050a] text-white lg:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
+      <section className="relative hidden min-h-screen flex-col justify-between overflow-hidden border-r border-white/10 p-12 lg:flex xl:p-16">
+        <div className="pointer-events-none absolute inset-0">
+          <ReconstructionCanvas progress={0.58} />
+          <div className="absolute inset-0 opacity-85 [mask-image:radial-gradient(circle_at_58%_58%,black_5%,rgba(0,0,0,.92)_42%,transparent_78%)]">
+            <Suspense fallback={null}>
+              <DefenseLatticeScene progress={0.72} />
+            </Suspense>
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,10,.1),rgba(2,5,10,.22)_48%,rgba(2,5,10,.86))]" />
+          <div className="onboarding-security-grid absolute inset-0" />
+          <div className="onboarding-signal-noise absolute inset-0" />
         </div>
-        <p className="text-xs text-indigo-200">Aegis Loop · Adaptive web defense</p>
+        <Link to="/onboarding" className="relative z-10 flex items-center gap-3">
+          <BrandLogo className="size-10" />
+          <span>
+            <strong className="block text-sm tracking-[0.22em]">ANVIL</strong>
+            <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-white/45">
+              Adaptive web defense
+            </span>
+          </span>
+        </Link>
+        <div className="relative z-10 max-w-xl pb-10">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-100/65">
+            Operator console
+          </p>
+          <h1 className="mt-5 text-[clamp(2.65rem,3.7vw,4.2rem)] font-black leading-[0.96] tracking-[-0.055em]">
+            검증 결과를 확인하고
+            <br />
+            적용 여부를 결정하세요.
+          </h1>
+          <p className="mt-7 max-w-lg text-base leading-8 text-white/58">
+            탐지된 공격, 우회 테스트, 오탐 지표와 배포 이력을 한곳에서 확인할 수 있습니다. 실제
+            차단은 관리자의 승인 후에만 시작됩니다.
+          </p>
+          <div className="mt-9 flex flex-wrap gap-2">
+            {["LIVE TRAFFIC", "AI VALIDATION", "WAF DELIVERY"].map((item) => (
+              <span
+                key={item}
+                className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 font-mono text-[8px] tracking-[0.17em] text-white/55 backdrop-blur"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="relative z-10 flex items-center gap-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/40">
+          <span className="relative size-1.5 rounded-full bg-cyan-200 shadow-[0_0_12px_rgba(125,225,255,.9)]">
+            <span className="absolute inset-0 animate-ping rounded-full bg-cyan-200/40" />
+          </span>
+          Security pipeline ready
+        </div>
       </section>
-      <section className="grid place-items-center px-5 py-10 sm:px-10">
-        <div className="w-full max-w-[420px]">
+      <section className="relative grid min-h-screen place-items-center px-5 py-10 sm:px-10 lg:bg-[#070b12]/80 lg:backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(83,120,255,.12),transparent_38%)] lg:hidden" />
+        <div className="relative w-full max-w-[430px]">
           <Link
             to="/onboarding"
-            className="mb-10 inline-flex items-center gap-2 text-sm text-[#949ba4] hover:text-white"
+            className="mb-12 inline-flex items-center gap-2 text-sm text-white/45 transition hover:text-white"
           >
             <ArrowLeft className="size-4" /> 온보딩으로 돌아가기
           </Link>
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <span className="grid size-10 place-items-center rounded-lg bg-[#5865f2]">
-              <Orbit className="size-5" />
-            </span>
-            <strong>Aegis Loop</strong>
+            <BrandLogo className="size-11" />
+            <strong className="tracking-[0.2em]">ANVIL</strong>
           </div>
-          <h2 className="text-3xl font-bold tracking-tight">관리자 로그인</h2>
-          <p className="mt-2 text-sm text-[#949ba4]">데모 계정이 미리 입력되어 있습니다.</p>
-          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.3em] text-cyan-100/55">
+            Secure access
+          </p>
+          <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em]">관리자 로그인</h2>
+          <p className="mt-3 text-sm leading-6 text-white/45">
+            보호 서비스와 방어 룰을 관리하려면 로그인하세요.
+          </p>
+          <form
+            className="mt-9 space-y-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-[0_30px_90px_rgba(0,0,0,.32)] backdrop-blur sm:p-6"
+            onSubmit={handleSubmit}
+          >
             <label className="block">
-              <span className="mb-2 block text-xs font-semibold uppercase text-[#b5bac1]">
-                이메일
-              </span>
-              <span className="flex items-center rounded-md bg-[#1e1f22] px-3 ring-1 ring-white/[0.06] focus-within:ring-[#5865f2]">
-                <Mail className="size-4 text-[#6d6f78]" />
+              <span className="mb-2 block text-xs font-semibold text-white/65">이메일</span>
+              <span className="flex items-center rounded-lg border border-white/10 bg-black/20 px-3 transition focus-within:border-cyan-200/45 focus-within:bg-black/30">
+                <Mail className="size-4 text-white/35" />
                 <input
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="w-full bg-transparent px-3 py-3 text-sm outline-none"
+                  autoComplete="email"
+                  className="w-full bg-transparent px-3 py-3.5 text-sm outline-none"
                   required
                 />
               </span>
             </label>
             <label className="block">
-              <span className="mb-2 block text-xs font-semibold uppercase text-[#b5bac1]">
-                비밀번호
-              </span>
-              <span className="flex items-center rounded-md bg-[#1e1f22] px-3 ring-1 ring-white/[0.06] focus-within:ring-[#5865f2]">
-                <LockKeyhole className="size-4 text-[#6d6f78]" />
+              <span className="mb-2 block text-xs font-semibold text-white/65">비밀번호</span>
+              <span className="flex items-center rounded-lg border border-white/10 bg-black/20 px-3 transition focus-within:border-cyan-200/45 focus-within:bg-black/30">
+                <LockKeyhole className="size-4 text-white/35" />
                 <input
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full bg-transparent px-3 py-3 text-sm outline-none"
+                  autoComplete="current-password"
+                  className="w-full bg-transparent px-3 py-3.5 text-sm outline-none"
                   required
                 />
               </span>
@@ -110,16 +154,16 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex w-full items-center justify-center gap-2 rounded-md bg-[#5865f2] px-4 py-3 text-sm font-semibold hover:bg-[#4752c4] disabled:opacity-50"
+              className="group flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-3.5 text-sm font-bold text-[#07101b] transition hover:bg-cyan-50 disabled:opacity-50"
             >
               <ShieldCheck className="size-4" />
-              {submitting ? "확인 중..." : "방어 콘솔 시작"}
-              <ArrowRight className="size-4" />
+              {submitting ? "로그인 중..." : "ANVIL 콘솔 열기"}
+              <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
             </button>
           </form>
-          <div className="mt-5 rounded-md bg-[#1e1f22] p-4 text-xs text-[#949ba4]">
-            <p className="font-semibold text-[#dbdee1]">데모 계정</p>
-            <p className="mt-2 font-mono">admin@sentinel.local · demo1234</p>
+          <div className="mt-5 flex items-center justify-between rounded-lg border border-white/[0.07] px-4 py-3 text-xs text-white/38">
+            <span>데모 계정</span>
+            <span className="font-mono text-white/55">admin@sentinel.local · demo1234</span>
           </div>
         </div>
       </section>

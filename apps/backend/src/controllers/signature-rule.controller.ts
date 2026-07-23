@@ -6,6 +6,8 @@ import { enqueueSecurityJob } from "../services/job.service.js";
 import {
   approveRule,
   generateRuleFromEvent,
+  getShadowMetrics,
+  getSignatureRuleArtifact,
   getSignatureRule,
   listSignatureRules,
   rejectRule,
@@ -20,6 +22,14 @@ export const listRules: RequestHandler = async (_request, response) => {
 
 export const getRule: RequestHandler = async (request, response) => {
   response.json(createSuccessResponse(await getSignatureRule(String(request.params.id))));
+};
+
+export const getArtifact: RequestHandler = async (request, response) => {
+  response.json(createSuccessResponse(await getSignatureRuleArtifact(String(request.params.id))));
+};
+
+export const getShadowObservation: RequestHandler = async (request, response) => {
+  response.json(createSuccessResponse(await getShadowMetrics(String(request.params.id))));
 };
 
 export const generateRule: RequestHandler = async (request, response) => {

@@ -34,6 +34,9 @@ const RulesPage = lazy(() =>
 const ServicesPage = lazy(() =>
   import("@/pages/ServicesPage").then((module) => ({ default: module.ServicesPage }))
 );
+const SecurityScanPage = lazy(() =>
+  import("@/pages/SecurityScanPage").then((module) => ({ default: module.SecurityScanPage }))
+);
 const ValidationPage = lazy(() =>
   import("@/pages/ValidationPage").then((module) => ({ default: module.ValidationPage }))
 );
@@ -93,6 +96,7 @@ export function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="services" element={<ServicesPage />} />
+            <Route path="scans/:id" element={<SecurityScanPage />} />
             <Route path="logs" element={<LogsPage />} />
             <Route path="logs/:id" element={<LogDetailPage />} />
             <Route path="rules" element={<RulesPage />} />

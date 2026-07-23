@@ -5,6 +5,7 @@ export type ApiSuccessResponse<T> = {
 export type ApiErrorResponse = {
   error: {
     message: string;
+    code?: string;
     issues?: unknown;
   };
 };

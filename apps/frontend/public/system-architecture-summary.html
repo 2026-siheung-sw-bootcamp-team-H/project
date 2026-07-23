@@ -1,0 +1,531 @@
+﻿<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monolithic Security Platform Architecture</title>
+    <style>
+      :root {
+        --text: #111827;
+        --muted: #6b7280;
+        --border: #cbd5e1;
+        --blue: #2563eb;
+        --orange: #f97316;
+        --green: #16a34a;
+        --purple: #7c3aed;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #fff;
+        color: var(--text);
+        font-family:
+          Inter,
+          Pretendard,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .page {
+        width: 1280px;
+        margin: 0 auto;
+        padding: 54px 64px;
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 34px;
+        letter-spacing: -0.04em;
+      }
+
+      .subtitle {
+        margin: 0 0 28px;
+        color: var(--muted);
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .canvas {
+        position: relative;
+        width: 1152px;
+        height: 650px;
+        border: 2px solid #e5e7eb;
+        border-radius: 28px;
+        background: #ffffff;
+      }
+
+      .cloud-box {
+        position: absolute;
+        left: 252px;
+        top: 76px;
+        width: 866px;
+        height: 468px;
+        border: 2px solid #f59e0b;
+        border-radius: 28px;
+        background: rgba(255, 251, 235, 0.28);
+      }
+
+      .cloud-title {
+        position: absolute;
+        top: -34px;
+        left: 18px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: #92400e;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .docker-box {
+        position: absolute;
+        left: 282px;
+        top: 112px;
+        width: 806px;
+        height: 392px;
+        border: 2px solid #93c5fd;
+        border-radius: 24px;
+        background: rgba(239, 246, 255, 0.4);
+      }
+
+      .docker-title {
+        position: absolute;
+        top: -30px;
+        left: 18px;
+        color: #1d4ed8;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .node {
+        position: absolute;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        width: 128px;
+        height: 86px;
+        border: 2px solid var(--border);
+        border-radius: 16px;
+        background: #fff;
+        text-align: center;
+      }
+
+      .node.wide {
+        width: 170px;
+      }
+
+      .node.tall {
+        height: 116px;
+      }
+
+      .node.backend {
+        width: 330px;
+        height: 176px;
+        border-color: #94a3b8;
+        background: #ffffff;
+      }
+
+      .node img {
+        max-width: 86px;
+        max-height: 42px;
+        object-fit: contain;
+      }
+
+      .node.backend img {
+        max-width: 120px;
+        max-height: 46px;
+      }
+
+      .label {
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.2;
+      }
+
+      .caption {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .modules {
+        display: grid;
+        grid-template-columns: repeat(3, auto);
+        gap: 7px;
+        justify-content: center;
+      }
+
+      .module {
+        padding: 5px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 10px;
+        font-weight: 900;
+      }
+
+      .client {
+        left: 62px;
+        top: 226px;
+      }
+
+      .frontend {
+        left: 62px;
+        top: 424px;
+      }
+
+      .waf {
+        left: 302px;
+        top: 212px;
+      }
+
+      .backend-main {
+        left: 536px;
+        top: 176px;
+      }
+
+      .storage {
+        left: 954px;
+        top: 152px;
+      }
+
+      .redis {
+        left: 954px;
+        top: 350px;
+      }
+
+      .otel {
+        left: 302px;
+        top: 384px;
+      }
+
+      .zap {
+        left: 510px;
+        top: 426px;
+      }
+
+      .ai {
+        left: 728px;
+        top: 426px;
+      }
+
+      .infra {
+        position: absolute;
+        z-index: 4;
+        left: 756px;
+        top: 28px;
+        display: flex;
+        gap: 8px;
+      }
+
+      .infra span {
+        padding: 7px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        background: #fff;
+        color: #374151;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      svg {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .arrow {
+        fill: none;
+        stroke: #111827;
+        stroke-width: 2.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        marker-end: url(#arrow);
+      }
+
+      .arrow.two-way {
+        marker-start: url(#arrowStart);
+      }
+
+      .arrow.blue {
+        stroke: var(--blue);
+        marker-end: url(#arrowBlue);
+      }
+
+      .arrow.blue.two-way {
+        marker-start: url(#arrowBlueStart);
+      }
+
+      .arrow.orange {
+        stroke: var(--orange);
+        marker-end: url(#arrowOrange);
+      }
+
+      .arrow.green {
+        stroke: var(--green);
+        marker-end: url(#arrowGreen);
+      }
+
+      .arrow.purple {
+        stroke: var(--purple);
+        marker-end: url(#arrowPurple);
+      }
+
+      .arrow.purple.two-way {
+        marker-start: url(#arrowPurpleStart);
+      }
+
+      .arrow-label {
+        fill: #374151;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .legend {
+        display: flex;
+        gap: 18px;
+        margin-top: 18px;
+        color: #374151;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .legend span::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 7px;
+        border-radius: 999px;
+        background: #111827;
+      }
+
+      .legend .blue::before {
+        background: var(--blue);
+      }
+
+      .legend .orange::before {
+        background: var(--orange);
+      }
+
+      .legend .purple::before {
+        background: var(--purple);
+      }
+
+      .legend .green::before {
+        background: var(--green);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <h1>자가개선형 웹 방어 시그니처 플랫폼</h1>
+      <p class="subtitle">
+        WAF 앞단에서 요청을 보호하고, 하나의 Express 백엔드가 분석·검증·승인·배포를 처리합니다.
+      </p>
+
+      <section class="canvas" aria-label="모놀리식 시스템 아키텍처">
+        <svg viewBox="0 0 1152 650" preserveAspectRatio="none">
+          <defs>
+            <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+              <path d="M2,2 L10,6 L2,10 Z" fill="#111827" />
+            </marker>
+            <marker
+              id="arrowStart"
+              markerWidth="12"
+              markerHeight="12"
+              refX="2"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M10,2 L2,6 L10,10 Z" fill="#111827" />
+            </marker>
+            <marker
+              id="arrowBlue"
+              markerWidth="12"
+              markerHeight="12"
+              refX="10"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M2,2 L10,6 L2,10 Z" fill="#2563eb" />
+            </marker>
+            <marker
+              id="arrowBlueStart"
+              markerWidth="12"
+              markerHeight="12"
+              refX="2"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M10,2 L2,6 L10,10 Z" fill="#2563eb" />
+            </marker>
+            <marker
+              id="arrowOrange"
+              markerWidth="12"
+              markerHeight="12"
+              refX="10"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M2,2 L10,6 L2,10 Z" fill="#f97316" />
+            </marker>
+            <marker
+              id="arrowGreen"
+              markerWidth="12"
+              markerHeight="12"
+              refX="10"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M2,2 L10,6 L2,10 Z" fill="#16a34a" />
+            </marker>
+            <marker
+              id="arrowPurple"
+              markerWidth="12"
+              markerHeight="12"
+              refX="10"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M2,2 L10,6 L2,10 Z" fill="#7c3aed" />
+            </marker>
+            <marker
+              id="arrowPurpleStart"
+              markerWidth="12"
+              markerHeight="12"
+              refX="2"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M10,2 L2,6 L10,10 Z" fill="#7c3aed" />
+            </marker>
+          </defs>
+
+          <path class="arrow blue two-way" d="M190 269 H302" />
+          <text class="arrow-label" x="198" y="254">HTTP Request / Response</text>
+
+          <path class="arrow orange" d="M430 269 H536" />
+          <text class="arrow-label" x="462" y="254">WAF Log</text>
+
+          <path class="arrow" d="M430 427 H536" />
+          <text class="arrow-label" x="452" y="414">Telemetry</text>
+
+          <path class="arrow two-way" d="M866 236 H954" />
+          <path class="arrow two-way" d="M866 380 H954" />
+          <text class="arrow-label" x="884" y="222">Read / Write</text>
+          <text class="arrow-label" x="884" y="366">BullMQ Queue</text>
+
+          <path class="arrow purple two-way" d="M574 426 V352" />
+          <text class="arrow-label" x="452" y="402">Sandbox / Holdout Test</text>
+
+          <path class="arrow purple two-way" d="M792 426 V352" />
+          <text class="arrow-label" x="810" y="402">AI Report</text>
+
+          <path class="arrow green" d="M536 322 H430" />
+          <text class="arrow-label" x="430" y="350">Deploy Approved Rule</text>
+
+          <path class="arrow two-way" d="M190 467 H536" />
+          <text class="arrow-label" x="310" y="452">REST API / SSE</text>
+        </svg>
+
+        <div class="cloud-box">
+          <div class="cloud-title">GCP Compute Engine</div>
+        </div>
+        <div class="docker-box">
+          <div class="docker-title">Docker Compose Runtime</div>
+        </div>
+
+        <div class="infra">
+          <span>Frontend: Vercel</span>
+          <span>Backend: GCP VM</span>
+          <span>Monolithic</span>
+        </div>
+
+        <article class="node client">
+          <img src="client.png" alt="User" />
+          <div class="label">User / Attacker</div>
+          <div class="caption">정상·공격 요청</div>
+        </article>
+
+        <article class="node frontend">
+          <img src="frontend.png" alt="React" />
+          <div class="label">Admin Dashboard</div>
+          <div class="caption">React + Vite</div>
+        </article>
+
+        <article class="node waf tall">
+          <img src="ngninx.png" alt="Nginx" />
+          <img src="mod.png" alt="ModSecurity" />
+          <div class="label">WAF Gateway</div>
+          <div class="caption">Nginx + ModSecurity + CRS</div>
+        </article>
+
+        <article class="node backend backend-main">
+          <img src="express.png" alt="Express" />
+          <div class="label">Monolithic Express Backend</div>
+          <div class="modules">
+            <span class="module">Log Collect</span>
+            <span class="module">Normalize</span>
+            <span class="module">Detect</span>
+            <span class="module">Rule Generate</span>
+            <span class="module">Validate</span>
+            <span class="module">Approve/Deploy</span>
+          </div>
+          <div class="caption">하나의 백엔드 앱 내부 모듈</div>
+        </article>
+
+        <article class="node storage tall">
+          <img src="db.png" alt="PostgreSQL" />
+          <img src="OpenSearch.png" alt="OpenSearch" />
+          <div class="label">Storage</div>
+          <div class="caption">PostgreSQL / OpenSearch</div>
+        </article>
+
+        <article class="node redis">
+          <img src="redis.png" alt="Redis" />
+          <div class="label">Redis</div>
+          <div class="caption">BullMQ Queue / Cache</div>
+        </article>
+
+        <article class="node otel">
+          <img src="OpenTelemetry.png" alt="OpenTelemetry" />
+          <div class="label">OpenTelemetry</div>
+          <div class="caption">WAF·API 로그 수집</div>
+        </article>
+
+        <article class="node zap">
+          <img src="owasp.png" alt="OWASP ZAP" />
+          <div class="label">OWASP ZAP</div>
+          <div class="caption">검증 트래픽</div>
+        </article>
+
+        <article class="node ai">
+          <img src="gpt.png" alt="OpenAI" />
+          <div class="label">OpenAI</div>
+          <div class="caption">설명·개선 제안</div>
+        </article>
+      </section>
+
+      <div class="legend">
+        <span class="blue">요청 흐름</span>
+        <span class="orange">로그 전달</span>
+        <span class="purple">검증·AI 리포트</span>
+        <span class="green">승인 룰 배포</span>
+      </div>
+    </main>
+  </body>
+</html>

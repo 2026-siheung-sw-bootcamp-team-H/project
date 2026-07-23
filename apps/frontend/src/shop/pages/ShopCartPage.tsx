@@ -1,11 +1,16 @@
 import { ArrowLeft, Minus, Plus, ShieldCheck, ShoppingBag, Trash2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { products } from "@/data/shopData";
 import { formatPrice } from "@/lib/display";
 import { useShopStore } from "@/stores/shopStore";
 
 export function ShopCartPage() {
+  const [ordered, setOrdered] = useState(false);
+  const navigate = useNavigate();
   const cart = useShopStore((state) => state.cart);
+  const customer = useShopStore((state) => state.customer);
+  const clearCart = useShopStore((state) => state.clearCart);
   const updateQuantity = useShopStore((state) => state.updateQuantity);
   const removeFromCart = useShopStore((state) => state.removeFromCart);
   const items = cart.flatMap((cartItem) => {
@@ -15,11 +20,37 @@ export function ShopCartPage() {
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const shipping = subtotal >= 50000 || subtotal === 0 ? 0 : 3000;
 
+  function checkout() {
+    if (!customer) {
+      navigate("/demo-shop/login");
+      return;
+    }
+    clearCart();
+    setOrdered(true);
+  }
+
   return (
     <main className="mx-auto min-h-[65vh] max-w-7xl px-5 py-12 sm:px-6 lg:px-8">
       <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-600">Your bag</p>
       <h1 className="mt-3 text-4xl font-black tracking-[-0.06em]">장바구니</h1>
-      {items.length === 0 ? (
+      {ordered ? (
+        <div className="grid min-h-96 place-items-center text-center">
+          <div>
+            <span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-100 text-emerald-700">
+              <ShieldCheck className="size-7" />
+            </span>
+            <h2 className="mt-5 text-xl font-bold">데모 주문이 완료되었습니다.</h2>
+            <p className="mt-2 text-sm text-stone-500">실제 결제는 발생하지 않습니다.</p>
+            <Link
+              to="/demo-shop"
+              className="mt-7 inline-flex items-center gap-2 rounded-full bg-stone-950 px-6 py-3 text-xs font-bold text-white"
+            >
+              <ArrowLeft className="size-4" />
+              쇼핑 계속하기
+            </Link>
+          </div>
+        </div>
+      ) : items.length === 0 ? (
         <div className="grid min-h-96 place-items-center text-center">
           <div>
             <ShoppingBag className="mx-auto size-10 text-stone-300" />
@@ -112,9 +143,10 @@ export function ShopCartPage() {
             </dl>
             <button
               type="button"
+              onClick={checkout}
               className="mt-7 w-full rounded-full bg-orange-600 px-5 py-4 text-xs font-bold text-white hover:bg-orange-700"
             >
-              주문하기
+              {customer ? "주문하기" : "로그인 후 주문하기"}
             </button>
             <p className="mt-4 flex items-center justify-center gap-2 text-[10px] text-stone-400">
               <ShieldCheck className="size-3.5" /> 안전한 데모 결제 환경

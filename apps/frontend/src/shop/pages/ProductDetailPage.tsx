@@ -2,7 +2,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Check,
-  Heart,
   Minus,
   Plus,
   ShieldAlert,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
+import { products } from "@/data/shopData";
 import { formatPrice } from "@/lib/display";
 import { shopApi } from "@/services/shopApi";
 import { useShopStore } from "@/stores/shopStore";
@@ -24,10 +24,14 @@ export function ProductDetailPage() {
   const [added, setAdded] = useState(false);
   const addToCart = useShopStore((state) => state.addToCart);
   const customer = useShopStore((state) => state.customer);
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["shop", "product", id],
-    queryFn: () => shopApi.getProduct(id)
+  const fallbackProduct = products.find((item) => item.id === id);
+  const productQuery = useQuery({
+    queryKey: ["demo-shop", "product", id],
+    queryFn: () => shopApi.getProduct(id),
+    enabled: Boolean(fallbackProduct),
+    retry: false
   });
+  const product = productQuery.data?.data ?? fallbackProduct;
   const reviewMutation = useMutation({
     mutationFn: () => shopApi.createReview(id, review),
     onSuccess: (result) => {
@@ -46,30 +50,13 @@ export function ProductDetailPage() {
     if (review.trim()) reviewMutation.mutate();
   }
 
-  if (isLoading) {
-    return (
-      <main className="mx-auto min-h-[70vh] max-w-7xl animate-pulse px-5 py-12">
-        <div className="grid gap-10 lg:grid-cols-2">
-          <div className="aspect-square rounded-[2rem] bg-stone-200" />
-          <div className="space-y-5 py-10">
-            <div className="h-4 w-24 rounded bg-stone-200" />
-            <div className="h-12 w-3/4 rounded bg-stone-200" />
-            <div className="h-4 w-full rounded bg-stone-200" />
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (isError || !data) {
+  if (!product) {
     return (
       <main className="mx-auto grid min-h-[70vh] max-w-7xl place-items-center px-5 text-center">
         <div>
           <ShieldAlert className="mx-auto size-10 text-red-500" />
-          <h1 className="mt-5 text-2xl font-black">상품 요청을 처리하지 못했습니다</h1>
-          <p className="mt-3 text-sm text-stone-500">
-            {error instanceof Error ? error.message : "상품을 찾을 수 없습니다."}
-          </p>
+          <h1 className="mt-5 text-2xl font-black">상품을 찾을 수 없습니다</h1>
+          <p className="mt-3 text-sm text-stone-500">상품 목록에서 다시 선택해 주세요.</p>
           <Link
             to="/demo-shop"
             className="mt-7 inline-flex items-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-xs font-bold text-white"
@@ -81,7 +68,6 @@ export function ProductDetailPage() {
     );
   }
 
-  const product = data.data;
   return (
     <main>
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8 lg:py-12">
@@ -181,13 +167,6 @@ export function ProductDetailPage() {
                 {added ? <Check className="size-4" /> : <ShoppingBag className="size-4" />}
                 {added ? "장바구니에 담았습니다" : "장바구니 담기"}
               </button>
-              <button
-                type="button"
-                aria-label="관심 상품 추가"
-                className="grid size-12 place-items-center rounded-full border border-stone-300 bg-white hover:text-orange-600"
-              >
-                <Heart className="size-5" />
-              </button>
             </div>
             <ul className="mt-8 space-y-3 border-t border-stone-200 pt-7">
               {product.details.map((detail) => (
@@ -217,7 +196,7 @@ export function ProductDetailPage() {
               로그에서 확인할 수 있습니다.
             </p>
             <div className="mt-6 flex items-center gap-2 text-[11px] font-semibold text-emerald-700">
-              <ShieldCheck className="size-4" /> Aegis Loop protected
+              <ShieldCheck className="size-4" /> ANVIL protected
             </div>
           </div>
           <form onSubmit={submitReview}>
@@ -251,6 +230,11 @@ export function ProductDetailPage() {
                 {reviewMutation.data.blocked
                   ? `보안 정책이 리뷰 요청을 차단했습니다. ${reviewMutation.data.requestId}`
                   : `리뷰가 등록되었습니다. Request ID: ${reviewMutation.data.requestId}`}
+              </div>
+            )}
+            {reviewMutation.isError && (
+              <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                리뷰 보안 검사 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.
               </div>
             )}
           </form>

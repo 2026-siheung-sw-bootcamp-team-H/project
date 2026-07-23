@@ -1,14 +1,26 @@
-import { ApprovalDecision, DatasetKind, RuleStatus, SampleKind } from "@prisma/client";
+import {
+  ApprovalDecision,
+  DatasetKind,
+  RuleStatus,
+  SampleKind,
+  SecurityScanStage,
+  ValidationStatus
+} from "@prisma/client";
 import { prisma } from "../config/database.js";
+import { env } from "../config/env.js";
 import { AppError } from "../utils/app-error.js";
 import { asJson } from "../utils/json.js";
 import { generateAiExplanation } from "./ai.service.js";
+import { generateReport } from "./report.service.js";
 import {
   buildRuleDefinition,
   hashDefinition,
   makeExternalRuleId
 } from "./rule-generator.service.js";
 import { runValidation } from "./validation.service.js";
+import { createSecurityScan } from "./security-scan.service.js";
+import { exportModSecurityRule } from "./waf-export.service.js";
+import { signatureDefinitionSchema } from "../schemas/signature.schema.js";
 
 export async function listSignatureRules() {
   return prisma.signatureRule.findMany({
@@ -34,6 +46,81 @@ export async function getSignatureRule(id: string) {
   });
   if (!rule) throw new AppError("시그니처 룰을 찾을 수 없습니다.", 404, "RULE_NOT_FOUND");
   return rule;
+}
+
+export async function getSignatureRuleArtifact(id: string) {
+  const rule = await getSignatureRule(id);
+  const version = rule.versions.find((item) => item.version === rule.currentVersion);
+  if (!version)
+    throw new AppError("현재 룰 버전을 찾을 수 없습니다.", 409, "RULE_VERSION_NOT_FOUND");
+  const definition = signatureDefinitionSchema.safeParse(version.definition);
+  if (!definition.success) {
+    throw new AppError("현재 룰 정의가 유효하지 않습니다.", 409, "INVALID_RULE_DEFINITION");
+  }
+  const mode = rule.status === RuleStatus.ACTIVE ? "active" : "shadow";
+  return {
+    ruleId: rule.id,
+    externalId: rule.externalId,
+    version: version.version,
+    mode,
+    modSecurityRule: exportModSecurityRule(definition.data, mode),
+    artifactPath: rule.deployments[0]?.artifactPath ?? null,
+    generatedAt: new Date()
+  };
+}
+
+export async function getShadowMetrics(id: string) {
+  const rule = await getSignatureRule(id);
+  const version = rule.versions.find((item) => item.version === rule.currentVersion);
+  if (!version)
+    throw new AppError("현재 룰 버전을 찾을 수 없습니다.", 409, "RULE_VERSION_NOT_FOUND");
+  const shadowDeployment = rule.deployments.find((item) => item.status === "SHADOW");
+  if (!shadowDeployment) {
+    throw new AppError("Shadow 배포 이력이 없습니다.", 409, "SHADOW_DEPLOYMENT_REQUIRED");
+  }
+  const observedFrom = shadowDeployment.deployedAt ?? shadowDeployment.createdAt;
+  const baseWhere = {
+    protectedServiceId: rule.protectedServiceId,
+    occurredAt: { gte: observedFrom }
+  } as const;
+  const matchedWhere = {
+    ...baseWhere,
+    detections: { some: { ruleVersionId: version.id, matched: true } }
+  } as const;
+  const [observedRequests, matchedRequests, attackMatches, normalHits] = await Promise.all([
+    prisma.requestEvent.count({ where: baseWhere }),
+    prisma.requestEvent.count({ where: matchedWhere }),
+    prisma.requestEvent.count({
+      where: {
+        ...baseWhere,
+        AND: [
+          { detections: { some: { ruleVersionId: version.id, matched: true } } },
+          { detections: { some: { ruleVersionId: null, classification: "ATTACK" } } }
+        ]
+      }
+    }),
+    prisma.requestEvent.count({
+      where: {
+        ...baseWhere,
+        AND: [
+          { detections: { some: { ruleVersionId: version.id, matched: true } } },
+          { detections: { some: { ruleVersionId: null, classification: "NORMAL" } } }
+        ]
+      }
+    })
+  ]);
+  return {
+    ruleId: rule.id,
+    version: version.version,
+    observedFrom,
+    observedUntil: new Date(),
+    observedRequests,
+    matchedRequests,
+    attackMatches,
+    normalHits,
+    estimatedFalsePositiveRate: matchedRequests === 0 ? 0 : normalHits / matchedRequests,
+    activeRecommended: observedRequests > 0 && normalHits / Math.max(matchedRequests, 1) <= 0.1
+  };
 }
 
 export async function generateRuleFromEvent(eventId: string) {
@@ -122,7 +209,20 @@ export async function generateRuleFromEvent(eventId: string) {
 }
 
 export async function validateSignatureRule(id: string) {
-  return runValidation(id);
+  const validation = await runValidation(id);
+  const report = await generateReport(id, { reuseExisting: true });
+  let securityScan = null;
+  if (validation.status === ValidationStatus.PASSED && env.zapEnabled) {
+    try {
+      securityScan = await createSecurityScan({
+        stage: SecurityScanStage.BEFORE_DEPLOYMENT,
+        ruleId: id
+      });
+    } catch (error) {
+      console.warn("Automatic pre-deployment ZAP scan could not be queued.", error);
+    }
+  }
+  return { validation, report, securityScan };
 }
 
 export async function approveRule(id: string, userId: string, reason?: string) {
@@ -158,6 +258,34 @@ export async function requestRuleApproval(id: string, userId: string) {
       409,
       "INVALID_RULE_STATE"
     );
+  }
+  const latestValidation = rule.validationRuns[0];
+  if (
+    !latestValidation ||
+    !rule.reports.some((report) => report.validationRunId === latestValidation.id)
+  ) {
+    throw new AppError("최신 검증 결과에 대한 AI 리포트가 필요합니다.", 409, "AI_REPORT_REQUIRED");
+  }
+  if (env.zapEnabled) {
+    const shadowDeployment = rule.deployments.find((item) => item.status === "SHADOW");
+    const shadowScan = await prisma.securityScanRun.findFirst({
+      where: {
+        ruleId: id,
+        stage: SecurityScanStage.SHADOW_VERIFICATION,
+        status: "COMPLETED",
+        ...(shadowDeployment
+          ? { completedAt: { gt: shadowDeployment.deployedAt ?? shadowDeployment.createdAt } }
+          : {})
+      },
+      orderBy: { completedAt: "desc" }
+    });
+    if (!shadowScan) {
+      throw new AppError(
+        "Shadow 적용 후 완료된 ZAP 재검증이 필요합니다.",
+        409,
+        "SHADOW_SCAN_REQUIRED"
+      );
+    }
   }
   return prisma.$transaction(async (transaction) => {
     await transaction.auditLog.create({

@@ -13,6 +13,7 @@ import { platformRouter } from "./routes/platform.routes.js";
 import { requestEventRouter } from "./routes/request-event.routes.js";
 import { rootRouter } from "./routes/root.routes.js";
 import { signatureRuleRouter } from "./routes/signature-rule.routes.js";
+import { securityScanRouter } from "./routes/security-scan.routes.js";
 import { telemetryRouter } from "./routes/telemetry.routes.js";
 
 export function createApp() {
@@ -32,6 +33,7 @@ export function createApp() {
   app.use("/demo-shop", demoShopRouter);
   app.use("/api/request-events", requestEventRouter);
   app.use("/api/signature-rules", signatureRuleRouter);
+  app.use("/api/security-scans", securityScanRouter);
   app.use("/api/telemetry", telemetryRouter);
   app.use("/api", platformRouter);
   app.use(notFoundHandler);

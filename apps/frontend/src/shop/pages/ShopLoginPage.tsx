@@ -1,4 +1,3 @@
-import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Check, LogOut, ShieldCheck, ShoppingBag } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,18 +7,20 @@ import { useShopStore } from "@/stores/shopStore";
 export function ShopLoginPage() {
   const [email, setEmail] = useState("shopper@demo.local");
   const [password, setPassword] = useState("shop1234");
+  const [loginError, setLoginError] = useState("");
   const navigate = useNavigate();
   const customer = useShopStore((state) => state.customer);
   const setCustomer = useShopStore((state) => state.setCustomer);
   const clearCustomer = useShopStore((state) => state.clearCustomer);
-  const loginMutation = useMutation({
-    mutationFn: () => shopApi.login(email, password),
-    onSuccess: (result) => setCustomer(result.customer)
-  });
-
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    loginMutation.mutate();
+    if (email !== "shopper@demo.local" || password !== "shop1234") {
+      setLoginError("데모 계정 정보를 확인해 주세요.");
+      return;
+    }
+    setLoginError("");
+    setCustomer({ name: "데모 쇼퍼", email });
+    void shopApi.login(email, password).catch(() => undefined);
   }
 
   if (customer) {
@@ -106,17 +107,16 @@ export function ShopLoginPage() {
                 required
               />
             </label>
-            {loginMutation.isError && (
+            {loginError && (
               <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-xs text-red-700">
-                {loginMutation.error.message}
+                {loginError}
               </p>
             )}
             <button
               type="submit"
-              disabled={loginMutation.isPending}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-4 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
             >
-              {loginMutation.isPending ? "로그인 중..." : "로그인"}
+              로그인
               <ArrowRight className="size-4" />
             </button>
           </form>
@@ -128,7 +128,7 @@ export function ShopLoginPage() {
           </div>
           <p className="mt-6 flex items-center justify-center gap-2 text-[10px] text-stone-400">
             <ShieldCheck className="size-3.5 text-emerald-700" />
-            Aegis Loop 요청 검사 활성화
+            ANVIL 요청 검사 활성화
           </p>
           <button
             type="button"

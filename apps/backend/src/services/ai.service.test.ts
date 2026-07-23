@@ -1,9 +1,38 @@
 import { AttackCategory } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { parseAiAdversarialSamples, parseAiRuleRefinement } from "./ai.service.js";
+import {
+  assertConfiguredAiSchemas,
+  assertOpenAiStructuredSchema,
+  parseAiAdversarialSamples,
+  parseAiRuleRefinement
+} from "./ai.service.js";
 import { buildRuleDefinition } from "./rule-generator.service.js";
 
 describe("AI rule refinement boundary", () => {
+  it("keeps configured output schemas compatible with OpenAI strict mode", () => {
+    expect(() => assertConfiguredAiSchemas()).not.toThrow();
+  });
+
+  it("rejects unsupported or ambiguous strict schema fields locally", () => {
+    expect(() =>
+      assertOpenAiStructuredSchema({
+        type: "object",
+        additionalProperties: false,
+        required: ["kind"],
+        properties: { kind: { const: "keyword_sequence" } }
+      })
+    ).toThrow("single-value enum");
+
+    expect(() =>
+      assertOpenAiStructuredSchema({
+        type: "object",
+        additionalProperties: false,
+        required: ["kind"],
+        properties: { kind: { enum: ["keyword_sequence"] } }
+      })
+    ).toThrow("must declare their type");
+  });
+
   it("forces identity, category, version, and monitor action at the trust boundary", () => {
     const current = buildRuleDefinition(AttackCategory.SQL_INJECTION, "SIG-SQLI-001");
     const untrusted = JSON.stringify({

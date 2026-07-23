@@ -1,8 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Box, RotateCcw, ShieldCheck, Truck } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
-import { categoryLabels } from "@/data/shopData";
-import { shopApi } from "@/services/shopApi";
+import { useSearchParams } from "react-router-dom";
+import { categoryLabels, products } from "@/data/shopData";
 import { ProductCard } from "@/shop/components/ProductCard";
 import type { ProductCategory } from "@/types/shop";
 
@@ -14,15 +12,8 @@ export function ShopHomePage() {
   const category = categoryValues.includes(requestedCategory as (typeof categoryValues)[number])
     ? (requestedCategory as "all" | ProductCategory)
     : "all";
-  const { data, isLoading } = useQuery({
-    queryKey: ["shop", "products"],
-    queryFn: shopApi.getProducts
-  });
-  const allProducts = data?.data ?? [];
   const filteredProducts =
-    category === "all"
-      ? allProducts
-      : allProducts.filter((product) => product.category === category);
+    category === "all" ? products : products.filter((product) => product.category === category);
 
   function setCategory(nextCategory: "all" | ProductCategory) {
     setSearchParams(nextCategory === "all" ? {} : { category: nextCategory });
@@ -60,17 +51,7 @@ export function ShopHomePage() {
               >
                 컬렉션 보기 <ArrowRight className="size-4" />
               </button>
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-6 py-3.5 text-xs font-bold text-white backdrop-blur transition hover:bg-white/20"
-              >
-                <ShieldCheck className="size-4" /> 보안 콘솔
-              </Link>
             </div>
-          </div>
-          <div className="absolute bottom-8 right-8 hidden rounded-2xl border border-white/15 bg-black/25 p-4 text-white backdrop-blur-md sm:block">
-            <p className="text-[10px] uppercase tracking-widest text-stone-400">Protected by</p>
-            <p className="mt-1 text-xs font-bold">Aegis Loop WAF</p>
           </div>
         </div>
       </section>
@@ -119,23 +100,11 @@ export function ShopHomePage() {
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-10 pt-9 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="animate-pulse">
-                <div className="aspect-[4/4.5] rounded-[1.6rem] bg-stone-200" />
-                <div className="mt-4 h-4 w-2/3 rounded bg-stone-200" />
-                <div className="mt-3 h-3 w-1/3 rounded bg-stone-200" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-10 pt-9 sm:gap-x-6 lg:grid-cols-4">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-10 pt-9 sm:gap-x-6 lg:grid-cols-4">
+          {filteredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-12 sm:px-6 lg:px-8">

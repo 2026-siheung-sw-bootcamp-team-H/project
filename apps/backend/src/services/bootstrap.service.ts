@@ -47,38 +47,17 @@ const samples = {
   ]
 } as const;
 
-export async function ensureBootstrapData() {
-  const existingAdmin = await prisma.user.findUnique({ where: { email: env.adminEmail } });
-  if (!existingAdmin) {
-    await prisma.user.create({
-      data: {
-        email: env.adminEmail,
-        name: env.adminName,
-        passwordHash: await bcrypt.hash(env.adminPassword, 12)
-      }
-    });
-  }
-
-  const service = await prisma.protectedService.upsert({
-    where: { slug: "demo-shop" },
-    update: {},
-    create: {
-      name: "Demo Shop API",
-      slug: "demo-shop",
-      apiUrl: "http://backend:4000/demo-shop"
-    }
-  });
-
+export async function ensureProtectedServiceSupportData(protectedServiceId: string) {
   for (const [type, name, config] of [
     [DeploymentTargetType.INTERNAL, "Internal Signature Policy", { mode: "database" }],
     [DeploymentTargetType.MODSECURITY, "Nginx / ModSecurity", { ruleDirectory: env.wafRuleDir }]
   ] as const) {
     await prisma.deploymentTarget.upsert({
       where: {
-        protectedServiceId_type_name: { protectedServiceId: service.id, type, name }
+        protectedServiceId_type_name: { protectedServiceId, type, name }
       },
       update: {},
-      create: { protectedServiceId: service.id, type, name, config }
+      create: { protectedServiceId, type, name, config }
     });
   }
 
@@ -87,14 +66,14 @@ export async function ensureBootstrapData() {
     const dataset = await prisma.dataset.upsert({
       where: {
         protectedServiceId_kind_name: {
-          protectedServiceId: service.id,
+          protectedServiceId,
           kind: datasetKind,
           name: `${datasetKind.toLowerCase()}-v1`
         }
       },
       update: {},
       create: {
-        protectedServiceId: service.id,
+        protectedServiceId,
         kind: datasetKind,
         name: `${datasetKind.toLowerCase()}-v1`,
         lockedAt: datasetKind === DatasetKind.HOLDOUT ? new Date() : null
@@ -116,11 +95,7 @@ export async function ensureBootstrapData() {
         payload: { method: "GET", path: "/demo-shop/search", query: { q: value } }
       }))
       .filter((sample) => !existingPayloads.has(JSON.stringify(sample.payload)));
-    if (missingSamples.length > 0) {
-      await prisma.datasetSample.createMany({
-        data: missingSamples
-      });
-    }
+    if (missingSamples.length > 0) await prisma.datasetSample.createMany({ data: missingSamples });
     const finalizedSamples = await prisma.datasetSample.findMany({
       where: { datasetId: dataset.id }
     });
@@ -134,4 +109,37 @@ export async function ensureBootstrapData() {
       }
     });
   }
+}
+
+export async function ensureBootstrapData() {
+  const existingAdmin = await prisma.user.findUnique({ where: { email: env.adminEmail } });
+  if (!existingAdmin) {
+    await prisma.user.create({
+      data: {
+        email: env.adminEmail,
+        name: env.adminName,
+        passwordHash: await bcrypt.hash(env.adminPassword, 12)
+      }
+    });
+  }
+
+  const service = await prisma.protectedService.upsert({
+    where: { slug: "demo-shop" },
+    update: {
+      publicDomain: "http://localhost:8081/demo-shop",
+      originUrl: "http://backend:4000/demo-shop",
+      proxyUrl: env.zapTargetUrl,
+      connectedAt: new Date()
+    },
+    create: {
+      name: "Demo Shop API",
+      slug: "demo-shop",
+      apiUrl: "http://backend:4000/demo-shop",
+      publicDomain: "http://localhost:8081/demo-shop",
+      originUrl: "http://backend:4000/demo-shop",
+      proxyUrl: env.zapTargetUrl,
+      connectedAt: new Date()
+    }
+  });
+  await ensureProtectedServiceSupportData(service.id);
 }

@@ -4,12 +4,12 @@
 
 이 백엔드는 **보호 서비스의 요청 수집 → 정규화/탐지 → 시그니처 생성 → 반복 우회 검증 → Holdout 최종 검증 → AI 리포트 → 관리자 검토 → Shadow 배포/관찰 → 최종 승인 → Active WAF 배포** 흐름을 제공한다.
 
-현재는 핵심 보안 파이프라인과 Docker 인프라가 동작하는 단계다. 외부 GPT API는 바로 연결할 수 있지만, 플랫폼을 프론트 목 데이터 없이 실제 데이터만으로 운영하려면 서비스 관리, 로그 필터, 대시보드 집계, 검증 진행률 등 운영 API를 추가해야 한다.
+현재는 보호 서비스 CRUD와 안전한 연결 테스트, 핵심 보안 파이프라인, OpenAI Responses API, OpenSearch, 초기/Shadow/배포 후 자동 ZAP 검증과 Docker 인프라가 연결된 단계다.
 
 따라서 완료 기준을 다음 두 단계로 나눈다.
 
-- **현재 코어 단계**: AI 보안 파이프라인과 WAF 배포 흐름이 동작한다. 실제 API 키 smoke test가 남아 있다.
-- **프로젝트 최종 완성 기준**: P0 기능 API와 P1 OpenSearch/SSE까지 구현한다. 이 범위를 발표·포트폴리오용 최종 백엔드로 본다.
+- **현재 코어 단계**: 최대 5라운드 AI 보안 파이프라인, 구조화 리포트, WAF/ZAP 전후 검증 흐름이 동작한다.
+- **프로젝트 최종 완성 기준**: P0 기능 API와 P1 OpenSearch/ZAP SSE를 구현한 현재 범위를 발표·포트폴리오용 최종 백엔드로 본다.
 - **실서비스 운영 기준**: P2의 고가용성, 백업, TLS, 모니터링, 장애 복구까지 충족한 상태다.
 
 즉, 최소 기능만 만든 상태를 최종 목표로 삼지 않는다. 현재 프로젝트는 **단일 노드에서도 운영 흐름을 증명할 수 있는 완성형 보안 플랫폼**을 목표로 하고, 실제 기업 운영에 필요한 다중 노드/재해 복구는 별도 단계로 구분한다.
@@ -53,7 +53,7 @@ AI 리포트는 Sandbox/Holdout 검증 근거를 설명하므로 최초 WAF 배�
 - Reverse Proxy/WAF: Nginx, ModSecurity, OWASP CRS
 - Telemetry: OpenTelemetry Collector
 - AI: OpenAI Responses API 또는 Gemini API
-- Search: PostgreSQL 우선, OpenSearch는 P1 검색 인덱스로 추가
+- Search: PostgreSQL 원본 저장, OpenSearch 검색 인덱스와 장애 시 PostgreSQL fallback
 - Infra: Docker Compose, 이후 AWS EC2 배포
 
 BullMQ와 Redis는 같은 기술이 아니다. BullMQ는 애플리케이션의 작업 큐/워커 라이브러리이고, Redis는 BullMQ 작업 상태와 대기열을 저장하는 인프라다.
@@ -62,7 +62,7 @@ BullMQ와 Redis는 같은 기술이 아니다. BullMQ는 애플리케이션의 �
 Express API → BullMQ Queue → Redis ← BullMQ Worker
                                   ├─ 반복 우회 검증
                                   ├─ AI 리포트 생성
-                                  └─ OpenSearch 색인(P1)
+                                  └─ OpenSearch Outbox 색인
 ```
 
 ## 3. 현재 구현 상태
@@ -94,23 +94,23 @@ Express API → BullMQ Queue → Redis ← BullMQ Worker
 
 ### 3.2 요구사항별 갭 분석
 
-| 요구사항         | 상태        | 현재 구현                                               | 추가 작업                                                  |
-| ---------------- | ----------- | ------------------------------------------------------- | ---------------------------------------------------------- |
-| 보호 서비스 관리 | 부분        | `ProtectedService` 저장, 목록 조회, Demo Shop seed      | 등록/상세/수정/비활성화/연결 테스트 API와 도메인 필드      |
-| 실제 요청 로그   | 부분        | 수집, 상세, classification/category/cursor 조회         | service/action/source/기간 필터와 운영용 페이지 메타데이터 |
-| 대시보드         | 부분        | 전체 요청/차단/활성 룰/confidence 기본 집계             | 서비스·기간별 통계, 시계열, 분류별 수치, 권장 작업         |
-| 로그에서 룰 생성 | 완료        | 이벤트 연결, 정상 요청 거부, 멱등성 보장                | 경로 명칭만 현재 API 기준으로 유지                         |
-| 비동기 AI 검증   | 부분        | BullMQ/Redis/Worker, 상태 조회, 결과 영구 저장          | 단계별 progress/currentRound 노출                          |
-| AI 리포트        | 부분        | 생성/저장, 룰 상세에서 조회                             | 리포트 단건 및 룰별 최신 리포트 GET API                    |
-| 승인·배포·롤백   | 완료        | 승인/반려/Shadow/Active/Rollback, 버전/사용자/실패 기록 | 배포 단건 GET은 P1에서 추가 가능                           |
-| 실시간 갱신      | 준비됨      | polling 가능한 조회 API                                 | polling fallback을 유지하고 P1에서 SSE 추가                |
-| 관리자 인증      | 완료        | 단일 관리자 로그인/JWT                                  | 현행 유지. refresh/logout 구조 변경 없음                   |
-| 감사 로그        | 부분        | 주요 승인/배포 행동 저장                                | 관리자용 목록/필터 API, 서비스 변경/검증 시작 기록 확대    |
-| 오류 응답        | 완료        | code/message/fieldErrors/requestId                      | 신규 API도 같은 포맷 유지                                  |
-| 보존/마스킹      | 완료        | 마스킹, raw 미저장, replay 만료 정리                    | 운영 환경별 보존 기간 문서화                               |
-| 여러 서비스      | 스키마 준비 | 모든 이벤트/룰/데이터셋에 service 관계 존재             | CRUD와 서비스별 조회 조건 추가                             |
-| 테스트 공격 분리 | 미구현      | Demo Shop 요청은 저장됨                                 | `REAL`/`SIMULATION` source와 simulationId 추가             |
-| OpenSearch       | 미구현      | Compose 선택 profile만 존재                             | P1에서 비동기 색인과 검색 API 추가                         |
+| 요구사항         | 상태 | 현재 구현                                              | 추가 작업                                                  |
+| ---------------- | ---- | ------------------------------------------------------ | ---------------------------------------------------------- |
+| 보호 서비스 관리 | 완료 | 등록/상세/수정/비활성화, SSRF 방어 연결 테스트         | 프론트 등록 화면 연결                                      |
+| 실제 요청 로그   | 부분 | 수집, 상세, classification/category/cursor 조회        | service/action/source/기간 필터와 운영용 페이지 메타데이터 |
+| 대시보드         | 부분 | 서비스별 기본 집계와 `nextAction` 권장 작업            | 기간별 시계열과 분류별 상세 수치                           |
+| 로그에서 룰 생성 | 완료 | 이벤트 연결, 정상 요청 거부, 멱등성 보장               | 경로 명칭만 현재 API 기준으로 유지                         |
+| 비동기 AI 검증   | 부분 | BullMQ/Redis/Worker, 상태 조회, 결과 영구 저장         | 단계별 progress/currentRound 노출                          |
+| AI 리포트        | 완료 | 구조화 생성/검증/저장, 룰 상세에서 조회, 비용 상한     | 독립 리포트 화면용 단건 API는 필요 시 추가                 |
+| 승인·배포·롤백   | 완료 | 승인/반려/Shadow/Active/Rollback, Shadow 지표, SecRule | 배포 단건 GET은 필요 시 추가                               |
+| 실시간 갱신      | 부분 | polling 조회와 ZAP 진행률 SSE                          | 검증 라운드 SSE는 필요 시 추가                             |
+| 관리자 인증      | 완료 | 단일 관리자 로그인/JWT                                 | 현행 유지. refresh/logout 구조 변경 없음                   |
+| 감사 로그        | 완료 | 서비스/진단/승인/배포 행동 저장과 목록·필터 API        | 프론트 감사 화면 연결                                      |
+| 오류 응답        | 완료 | code/message/fieldErrors/requestId                     | 신규 API도 같은 포맷 유지                                  |
+| 보존/마스킹      | 완료 | 마스킹, raw 미저장, replay 만료 정리                   | 운영 환경별 보존 기간 문서화                               |
+| 여러 서비스      | 부분 | CRUD, 서비스별 조회·ZAP 대상·지원 데이터               | 실제 WAF의 서비스별 동적 upstream 구성                     |
+| 테스트 공격 분리 | 완료 | `REAL`/`SIMULATION`/`TELEMETRY`, simulationId 저장     | 프론트 필터와 배지 연결                                    |
+| OpenSearch       | 완료 | Outbox/BullMQ 색인, 검색·집계 API, PostgreSQL fallback | 운영 시 인증/TLS/보존 정책 추가                            |
 
 ## 4. API 명명 원칙
 
@@ -336,7 +336,7 @@ wsl -d docker-desktop sysctl -w vm.max_map_count=262144
 docker compose --profile search up -d opensearch
 ```
 
-위 호스트 설정이 끝나면 로컬에서는 Compose 명령으로 실행할 수 있다. 단, 현재 Compose profile은 엔진만 준비된 상태이며, 실제 검색 기능을 사용하려면 백엔드의 OpenSearch client, Outbox 색인 Worker, index template, 검색 API 구현이 추가되어야 한다.
+위 호스트 설정이 끝나면 로컬에서는 Compose 명령으로 실행할 수 있다. 현재 Compose에는 OpenSearch client, Outbox 색인 Worker, index template과 검색 API가 연결되어 있다.
 
 #### 실제 서버 운영 시 필요한 사용자 결정
 
@@ -379,7 +379,7 @@ SSE endpoint는 단방향 상태 전달만 담당한다. 재연결 시 `Last-Eve
 - AWS EC2 또는 관리형 서비스 배포
 - rate limit, reverse proxy trust 설정, CORS 운영값 검증
 
-## 8. 외부 GPT API 연결 계획
+## 8. 외부 GPT API 연결 상태
 
 현재 AI 서비스는 구조화 출력과 deterministic fallback을 지원한다.
 
@@ -387,9 +387,12 @@ SSE endpoint는 단방향 상태 전달만 담당한다. 재연결 시 `Last-Eve
 AI_PROVIDER=openai
 OPENAI_API_KEY=replace-with-real-key
 AI_MODEL=gpt-4.1-mini
+AI_MAX_OUTPUT_TOKENS=1200
+AI_DAILY_CALL_LIMIT=50
+ADVERSARIAL_MAX_ROUNDS=5
 ```
 
-실제 키 연결 후 다음 smoke test를 수행한다.
+실제 키는 `apps/backend/.env`에서 Backend와 Worker에 전달된다. 유료 호출 smoke test는 필요할 때 한 번만 수행한다.
 
 1. AI 우회 payload가 스키마 검증을 통과한다.
 2. payload 개수/길이 제한이 적용된다.
