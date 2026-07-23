@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -110,6 +110,24 @@
         height: 250px;
         border-color: #93c5fd;
         background: var(--soft-blue);
+      }
+
+      .zone-cloud {
+        left: 342px;
+        top: 86px;
+        width: 950px;
+        height: 744px;
+        border-color: #fbbf24;
+        background: rgba(255, 251, 235, 0.28);
+      }
+
+      .zone-docker {
+        left: 360px;
+        top: 108px;
+        width: 900px;
+        height: 700px;
+        border-color: #93c5fd;
+        background: rgba(239, 246, 255, 0.2);
       }
 
       .zone-platform {
@@ -251,6 +269,11 @@
         top: 188px;
       }
 
+      .docker-runtime {
+        left: 372px;
+        top: 96px;
+      }
+
       .modsecurity {
         left: 590px;
         top: 165px;
@@ -308,12 +331,7 @@
 
       .zap {
         left: 88px;
-        top: 548px;
-      }
-
-      .yara {
-        left: 88px;
-        top: 660px;
+        top: 604px;
       }
 
       .gpt {
@@ -461,7 +479,9 @@
       <header class="header">
         <div>
           <h1>Self-Evolving Web Defense Platform</h1>
-          <p class="subtitle">Signature Detection 기반 WAF 룰 생성·검증·승인·배포 아키텍처</p>
+          <p class="subtitle">
+            Signature Detection 기반 WAF 룰 생성 · 검증 · Shadow/Active 배포 아키텍처
+          </p>
         </div>
         <div class="badge">System Architecture</div>
       </header>
@@ -550,16 +570,22 @@
           <path class="arrow rule" d="M858 702 V455 H650 V257"></path>
           <text class="arrow-label" x="686" y="524">룰 생성 / 배포</text>
 
-          <path class="arrow ai" d="M182 604 H390"></path>
-          <path class="arrow ai" d="M182 714 H790"></path>
-          <text class="arrow-label" x="214" y="590">검증 공격</text>
-          <text class="arrow-label" x="220" y="700">시그니처 Export</text>
+          <path class="arrow ai" d="M182 650 H390"></path>
+          <path class="arrow ai" d="M858 730 H185 V696 H88"></path>
+          <text class="arrow-label" x="216" y="636">ZAP 테스트 트래픽</text>
+          <text class="arrow-label" x="372" y="722">Sandbox / Holdout 검증</text>
 
           <path class="arrow ai" d="M516 600 H1135 V320 H1180"></path>
           <path class="arrow ai" d="M1180 355 H1120 V725 H916"></path>
-          <text class="arrow-label" x="1022" y="452">AI 룰 초안 / 리포트</text>
+          <text class="arrow-label" x="1018" y="452">AI 설명 / 개선 제안</text>
         </svg>
 
+        <div class="zone zone-cloud">
+          <span class="zone-title">GCP Compute Engine</span>
+        </div>
+        <div class="zone zone-docker">
+          <span class="zone-title">Docker Compose Runtime</span>
+        </div>
         <div class="zone zone-protected">
           <span class="zone-title">Protected Demo Service</span>
         </div>
@@ -570,24 +596,29 @@
           <span class="zone-title">Storage / Search</span>
         </div>
         <div class="zone zone-ai">
-          <span class="zone-title">Security Tools</span>
+          <span class="zone-title">Validation Tool</span>
         </div>
 
         <span class="step-tag" style="left: 54px; top: 36px">1. 요청 유입</span>
-        <span class="step-tag" style="left: 522px; top: 36px">2. WAF 탐지</span>
+        <span class="step-tag" style="left: 522px; top: 36px">2. WAF 검사</span>
         <span class="step-tag" style="left: 544px; top: 512px">3. 분석 파이프라인</span>
-        <span class="step-tag" style="left: 830px; top: 830px">4. 룰 생성·검증·배포</span>
+        <span class="step-tag" style="left: 830px; top: 830px">4. 룰 검증 · 승인 · 배포</span>
+
+        <article class="node small docker-runtime">
+          <div class="node-label">GCP VM</div>
+          <div class="node-caption">Docker Compose 배포</div>
+        </article>
 
         <article class="node client">
           <img src="client.png" alt="Client" />
           <div class="node-label">User / Attacker</div>
-          <div class="node-caption">정상·공격 요청</div>
+          <div class="node-caption">정상 · 공격 요청</div>
         </article>
 
         <article class="node frontend">
           <img src="frontend.png" alt="React Vite" />
           <div class="node-label">Admin Dashboard</div>
-          <div class="node-caption">React + Vite</div>
+          <div class="node-caption">React + Vite / Vercel</div>
         </article>
 
         <article class="node nginx small">
@@ -654,23 +685,17 @@
           <div class="node-caption">Attack Test</div>
         </article>
 
-        <article class="node yara small">
-          <img src="yara.png" alt="YARA" />
-          <div class="node-label">YARA</div>
-          <div class="node-caption">Signature Export</div>
-        </article>
-
         <article class="node gpt small">
           <img src="gpt.png" alt="AI API" />
-          <div class="node-label">OpenAI / Gemini</div>
-          <div class="node-caption">Rule Draft / Report</div>
+          <div class="node-label">OpenAI</div>
+          <div class="node-caption">Report / Suggestion</div>
         </article>
 
         <div class="legend">
           <span class="legend-item"><span class="dot request"></span>요청 / API</span>
           <span class="legend-item"><span class="dot event"></span>로그 / 이벤트</span>
           <span class="legend-item"><span class="dot rule"></span>룰 생성 / 배포</span>
-          <span class="legend-item"><span class="dot ai"></span>AI / 보안 도구</span>
+          <span class="legend-item"><span class="dot ai"></span>검증 / AI 설명</span>
         </div>
       </section>
 
@@ -679,11 +704,11 @@
           <h2>전체 흐름</h2>
           <ol>
             <li>
-              <strong>요청 유입:</strong> 사용자의 정상 요청과 테스트 공격 요청이 `Nginx`로
-              들어온다.
+              <strong>요청 유입:</strong> 사용자 또는 공격자의 요청이 `Nginx`를 통해 보호 대상
+              서비스로 들어온다.
             </li>
             <li>
-              <strong>WAF 탐지:</strong> `ModSecurity`가 `OWASP CRS`와 생성된 커스텀 룰로 요청을
+              <strong>WAF 검사:</strong> `ModSecurity`가 `OWASP CRS`와 생성된 커스텀 룰로 요청을
               검사한다.
             </li>
             <li>
@@ -691,16 +716,16 @@
               Collector`가 수집한다.
             </li>
             <li>
-              <strong>분석 저장:</strong> Platform API가 요청을 정규화하고, 탐지 결과를 DB와 검색
+              <strong>분석 저장:</strong> Platform API가 요청을 정규화하고 탐지 결과를 DB와 검색
               저장소에 남긴다.
             </li>
             <li>
-              <strong>룰 개선:</strong> 탐지 실패·우회 사례를 기반으로 새 시그니처 룰을 만들고
-              검증한다.
+              <strong>룰 개선:</strong> 탐지된 공격을 기반으로 시그니처 룰을 만들고 Sandbox/Holdout
+              검증을 수행한다.
             </li>
             <li>
-              <strong>승인 배포:</strong> 관리자 승인 후 룰을 WAF에 반영하고, 문제가 생기면 이전
-              버전으로 롤백한다.
+              <strong>승인 배포:</strong> Shadow 배포 후 관리자가 승인하면 Active 룰로 반영하고,
+              문제 발생 시 롤백한다.
             </li>
           </ol>
         </article>
@@ -709,28 +734,28 @@
           <h2>구성 요소 역할</h2>
           <ul>
             <li>
-              <strong>Admin Dashboard:</strong> 로그 조회, 룰 검증 결과, 승인/거절, 리포트 확인
-              화면.
+              <strong>Admin Dashboard:</strong> 요청 로그, 탐지 결과, 룰 검증 결과, 승인/반려, AI
+              리포트를 확인하는 화면.
             </li>
             <li>
-              <strong>Platform API:</strong> 수집, 정규화, 탐지, 검증, 룰 배포를 담당하는 메인
-              백엔드.
+              <strong>Platform API:</strong> 수집, 정규화, 탐지, 검증, 승인, 배포 흐름을 담당하는
+              메인 백엔드.
             </li>
             <li>
-              <strong>Normalizer:</strong> URL decode, unicode normalize, lowercase 등으로 탐지
-              가능한 형태를 만든다.
+              <strong>Normalizer:</strong> URL decode, HTML entity decode, unicode normalize,
+              lowercase 등으로 요청을 분석 가능한 형태로 만든다.
             </li>
             <li>
               <strong>Signature Detector:</strong> 조건 트리 기반 룰로 SQLi, XSS, Path Traversal
-              등을 분류한다.
+              의심 요청을 분류한다.
             </li>
             <li>
-              <strong>Redis + BullMQ:</strong> 룰 생성, 샌드박스 검증, AI 리포트 생성 같은 오래
-              걸리는 작업을 큐로 처리한다.
+              <strong>Sandbox/Holdout:</strong> 우회 공격과 정상 요청 셋을 분리해 탐지율과 오탐률을
+              검증한다.
             </li>
             <li>
-              <strong>OpenAI / Gemini:</strong> 룰 초안, 우회 전략 추천, 사람이 읽기 쉬운 보안
-              리포트 생성에만 사용한다.
+              <strong>OpenAI:</strong> 공격 설명, 우회 전략 제안, 룰 개선 방향, 관리자용 리포트
+              생성에 사용한다.
             </li>
           </ul>
         </article>

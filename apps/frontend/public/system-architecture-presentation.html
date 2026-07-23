@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>System Architecture</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f5f5f5;
+        color: #111827;
+        font-family: Pretendard, "Noto Sans KR", Arial, sans-serif;
+      }
+
+      .canvas {
+        position: relative;
+        width: 1440px;
+        height: 820px;
+        margin: 30px auto;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      .area {
+        position: absolute;
+        border: 3px solid #111827;
+        border-radius: 34px;
+        background: #ffffff;
+      }
+
+      .area-title {
+        position: absolute;
+        top: -38px;
+        left: 28px;
+        padding: 0 10px;
+        background: #ffffff;
+        font-size: 24px;
+        font-weight: 800;
+      }
+
+      .protected-area {
+        left: 135px;
+        top: 110px;
+        width: 405px;
+        height: 560px;
+      }
+
+      .platform-area {
+        left: 610px;
+        top: 110px;
+        width: 710px;
+        height: 560px;
+      }
+
+      .deploy-label {
+        position: absolute;
+        left: 1118px;
+        top: 78px;
+        color: #555;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .logo-badge {
+        position: absolute;
+        left: 608px;
+        top: 66px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #555;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .logo-badge img {
+        max-width: 64px;
+        max-height: 42px;
+        object-fit: contain;
+      }
+
+      .node {
+        position: absolute;
+        min-width: 150px;
+        min-height: 92px;
+        padding: 13px 14px;
+        border: 2px solid #111827;
+        border-radius: 16px;
+        background: #ffffff;
+        text-align: center;
+      }
+
+      .node.dashed {
+        border-style: dashed;
+      }
+
+      .node h3 {
+        margin: 6px 0 4px;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .node p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .logos {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 38px;
+      }
+
+      .logo {
+        max-width: 72px;
+        max-height: 44px;
+        object-fit: contain;
+      }
+
+      .logo.small {
+        max-width: 48px;
+        max-height: 30px;
+      }
+
+      .logo.big {
+        max-width: 95px;
+        max-height: 58px;
+      }
+
+      .user {
+        left: 32px;
+        top: 278px;
+        width: 90px;
+        text-align: center;
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .user img {
+        width: 78px;
+        display: block;
+        margin: 0 auto 8px;
+      }
+
+      .admin {
+        left: 345px;
+        top: 705px;
+        width: 118px;
+        text-align: center;
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .admin img {
+        width: 84px;
+        display: block;
+        margin: 0 auto 8px;
+      }
+
+      .waf {
+        left: 250px;
+        top: 210px;
+        width: 220px;
+        height: 130px;
+      }
+
+      .shop {
+        left: 250px;
+        top: 425px;
+        width: 220px;
+        height: 126px;
+      }
+
+      .otel {
+        left: 675px;
+        top: 205px;
+        width: 170px;
+        height: 98px;
+      }
+
+      .normalizer {
+        left: 880px;
+        top: 210px;
+        width: 156px;
+        height: 90px;
+      }
+
+      .detector {
+        left: 1080px;
+        top: 210px;
+        width: 156px;
+        height: 90px;
+      }
+
+      .api {
+        left: 810px;
+        top: 430px;
+        width: 240px;
+        height: 128px;
+      }
+
+      .storage {
+        left: 1080px;
+        top: 400px;
+        width: 180px;
+        height: 158px;
+      }
+
+      .queue {
+        left: 675px;
+        top: 470px;
+        width: 145px;
+        height: 88px;
+      }
+
+      .ai {
+        left: 1248px;
+        top: 690px;
+        width: 105px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .ai img {
+        width: 78px;
+        display: block;
+        margin: 0 auto 8px;
+      }
+
+      .zap {
+        left: 665px;
+        top: 698px;
+        width: 132px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .zap img {
+        width: 76px;
+        display: block;
+        margin: 0 auto 6px;
+      }
+
+      svg {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .arrow {
+        fill: none;
+        stroke: #111827;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .label {
+        fill: #111827;
+        font-size: 15px;
+        font-weight: 800;
+        paint-order: stroke;
+        stroke: #ffffff;
+        stroke-width: 7px;
+        stroke-linejoin: round;
+      }
+
+      .label.sub {
+        fill: #4b5563;
+        font-size: 13px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="canvas">
+      <div class="area protected-area">
+        <div class="area-title">Protected Web Service</div>
+      </div>
+
+      <div class="area platform-area">
+        <div class="area-title">Security Platform</div>
+      </div>
+
+      <div class="logo-badge">
+        <span>GCP</span>
+        <img src="./db.png" alt="GCP placeholder" />
+        <span>Docker</span>
+      </div>
+      <div class="deploy-label">Docker 기반 배포</div>
+
+      <div class="user">
+        <img src="./client.png" alt="User" />
+        User /<br />Attacker
+      </div>
+
+      <section class="node waf">
+        <div class="logos">
+          <img class="logo small" src="./ngninx.png" alt="Nginx" />
+          <img class="logo small" src="./mod.png" alt="ModSecurity" />
+          <img class="logo small" src="./crs.png" alt="OWASP CRS" />
+        </div>
+        <h3>WAF Gateway</h3>
+        <p>Nginx + ModSecurity + CRS</p>
+      </section>
+
+      <section class="node shop dashed">
+        <img class="logo big" src="./express.png" alt="Express" />
+        <h3>Demo Shop API</h3>
+        <p>보호 대상 서비스</p>
+      </section>
+
+      <section class="node otel">
+        <img class="logo big" src="./OpenTelemetry.png" alt="OpenTelemetry" />
+        <h3>OTel Collector</h3>
+        <p>WAF 로그 수집</p>
+      </section>
+
+      <section class="node normalizer dashed">
+        <h3>Normalizer</h3>
+        <p>요청 정규화</p>
+      </section>
+
+      <section class="node detector dashed">
+        <h3>Detector</h3>
+        <p>공격 탐지</p>
+      </section>
+
+      <section class="node api">
+        <img class="logo big" src="./express.png" alt="Express" />
+        <h3>Platform API</h3>
+        <p>Rule Generate / Validate / Deploy</p>
+      </section>
+
+      <section class="node queue dashed">
+        <img class="logo big" src="./redis.png" alt="Redis" />
+        <h3>Redis</h3>
+        <p>Queue / Cache</p>
+      </section>
+
+      <section class="node storage">
+        <div class="logos">
+          <img class="logo small" src="./db.png" alt="PostgreSQL" />
+          <img class="logo" src="./OpenSearch.png" alt="OpenSearch" />
+        </div>
+        <h3>Data Storage</h3>
+        <p>PostgreSQL<br />OpenSearch</p>
+      </section>
+
+      <div class="admin">
+        <img src="./frontend.png" alt="Admin Dashboard" />
+        Admin<br />Dashboard
+      </div>
+
+      <div class="zap">
+        <img src="./owasp.png" alt="OWASP ZAP" />
+        OWASP ZAP
+      </div>
+
+      <div class="ai">
+        <img src="./gpt.png" alt="OpenAI" />
+        OpenAI
+      </div>
+
+      <svg viewBox="0 0 1440 820" aria-hidden="true">
+        <defs>
+          <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+            <path d="M2,2 L10,6 L2,10 Z" fill="#111827" />
+          </marker>
+          <marker
+            id="arrow-both-start"
+            markerWidth="12"
+            markerHeight="12"
+            refX="2"
+            refY="6"
+            orient="auto"
+          >
+            <path d="M10,2 L2,6 L10,10 Z" fill="#111827" />
+          </marker>
+        </defs>
+
+        <path class="arrow" marker-end="url(#arrow)" d="M122 325 H250" />
+        <text class="label sub" x="150" y="308">HTTP Request</text>
+
+        <path class="arrow" marker-end="url(#arrow)" d="M360 340 V425" />
+        <text class="label sub" x="375" y="388">Allowed Request</text>
+
+        <path class="arrow" marker-end="url(#arrow)" d="M470 260 H675" />
+        <text class="label sub" x="520" y="244">WAF Log</text>
+
+        <path class="arrow" marker-end="url(#arrow)" d="M845 254 H880" />
+        <path class="arrow" marker-end="url(#arrow)" d="M1036 254 H1080" />
+        <path class="arrow" marker-end="url(#arrow)" d="M1158 300 V400" />
+        <text class="label sub" x="915" y="238">Normalized Event</text>
+
+        <path class="arrow" marker-end="url(#arrow)" d="M958 300 V430" />
+        <text class="label sub" x="970" y="365">Detection Result</text>
+
+        <path class="arrow" marker-end="url(#arrow)" d="M810 500 H470 V340" />
+        <text class="label" x="540" y="485">Rule Deploy</text>
+
+        <path
+          class="arrow"
+          marker-start="url(#arrow-both-start)"
+          marker-end="url(#arrow)"
+          d="M463 705 H810 V525"
+        />
+        <text class="label" x="540" y="690">REST API / SSE</text>
+
+        <path
+          class="arrow"
+          marker-start="url(#arrow-both-start)"
+          marker-end="url(#arrow)"
+          d="M1050 490 H1080"
+        />
+        <text class="label sub" x="1048" y="475">Read / Write</text>
+
+        <path
+          class="arrow"
+          marker-start="url(#arrow-both-start)"
+          marker-end="url(#arrow)"
+          d="M810 514 H675"
+        />
+        <text class="label sub" x="704" y="500">Queue / Cache</text>
+
+        <path class="arrow" marker-end="url(#arrow)" d="M810 558 V720 H797" />
+        <text class="label" x="825" y="640">Validation Start</text>
+
+        <path class="arrow" marker-end="url(#arrow)" d="M665 720 H360 V340" />
+        <text class="label" x="415" y="704">Test Attack</text>
+
+        <path
+          class="arrow"
+          marker-start="url(#arrow-both-start)"
+          marker-end="url(#arrow)"
+          d="M1050 470 H1248"
+        />
+        <text class="label" x="1088" y="454">AI Report</text>
+      </svg>
+    </main>
+  </body>
+</html>

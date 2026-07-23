@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" modified="2026-07-23T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="msa-architecture" name="MSA Architecture">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="cloud" value="GCP VM / Docker Compose Runtime" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;strokeColor=#f59e0b;fillColor=#fff7ed;fontStyle=1;fontSize=18;align=left;verticalAlign=top;spacingLeft=18;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="70" width="1280" height="820" as="geometry"/>
+        </mxCell>
+        <mxCell id="demo-zone" value="Protected Demo Service" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;strokeColor=#93c5fd;fillColor=#eff6ff;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingLeft=18;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="190" y="120" width="1180" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="core-zone" value="Security Platform Core" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;strokeColor=#fbbf24;fillColor=#fffbeb;fontStyle=1;fontSize=16;align=left;verticalAlign=top;spacingLeft=18;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="190" y="410" width="1180" height="430" as="geometry"/>
+        </mxCell>
+        <mxCell id="user" value="User / Attacker&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;정상·공격 요청&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#cbd5e1;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="190" width="120" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin" value="Admin Dashboard&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;React + Vite / Vercel&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#cbd5e1;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="570" width="130" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="waf" value="WAF Gateway&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Nginx + ModSecurity&lt;br&gt;OWASP CRS&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#2563eb;fillColor=#ffffff;fontStyle=1;fontSize=16;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="190" width="170" height="105" as="geometry"/>
+        </mxCell>
+        <mxCell id="shop" value="Demo Shop API&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Protected Service&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#2563eb;fillColor=#ffffff;fontStyle=1;fontSize=16;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="195" width="170" height="95" as="geometry"/>
+        </mxCell>
+        <mxCell id="otel" value="OTel Collector&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Log / Event Collect&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#f97316;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="505" y="480" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="api" value="Platform API&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Express REST / SSE&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#7c3aed;fillColor=#ffffff;fontStyle=1;fontSize=16;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="585" width="170" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="queue" value="Redis + BullMQ&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Queue / Cache&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#dc2626;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="505" y="720" width="160" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="normalizer" value="Normalizer Service&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Decode / Normalize&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#2563eb;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="500" width="160" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="detector" value="Detector Service&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Signature Match&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#f97316;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="935" y="500" width="160" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="rule" value="Rule Service&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Generate / Version&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#22c55e;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="640" width="160" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="validation" value="Validation Worker&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Sandbox / Holdout&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#8b5cf6;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="935" y="640" width="160" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="deploy" value="Approval / Deploy Service&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Shadow → Active&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#16a34a;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="750" width="180" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="storage" value="Storage / Search&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;PostgreSQL&lt;br&gt;OpenSearch&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#22c55e;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="500" width="165" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="openai" value="OpenAI API&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Report / Rule Suggestion&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;strokeColor=#64748b;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="80" width="165" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="zap" value="OWASP ZAP&lt;br&gt;&lt;font style=&quot;font-size: 12px&quot;&gt;Attack Validation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;strokeColor=#8b5cf6;fillColor=#ffffff;fontStyle=1;fontSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="755" width="165" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="HTTP 요청" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#2563eb;fontSize=12;" edge="1" parent="1" source="user" target="waf"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" value="보호 대상 요청" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#2563eb;fontSize=12;" edge="1" parent="1" source="waf" target="shop"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" value="WAF 로그 / 보안 이벤트" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#f97316;fontSize=12;" edge="1" parent="1" source="waf" target="otel"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" value="이벤트 적재" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#dc2626;fontSize=12;" edge="1" parent="1" source="otel" target="queue"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="작업 처리" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#7c3aed;fontSize=12;" edge="1" parent="1" source="queue" target="normalizer"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" value="정규화 결과" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#2563eb;fontSize=12;" edge="1" parent="1" source="normalizer" target="detector"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" value="탐지 결과" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#f97316;fontSize=12;" edge="1" parent="1" source="detector" target="rule"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" value="룰 후보" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#22c55e;fontSize=12;" edge="1" parent="1" source="rule" target="validation"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" value="검증 시작" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#8b5cf6;fontSize=12;" edge="1" parent="1" source="validation" target="zap"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" value="테스트 공격 요청" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#8b5cf6;fontSize=12;" edge="1" parent="1" source="zap" target="waf"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" value="통과 룰 / 리포트" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#16a34a;fontSize=12;" edge="1" parent="1" source="validation" target="deploy"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e12" value="SecRule 배포" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#16a34a;fontSize=12;" edge="1" parent="1" source="deploy" target="waf"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e13" value="REST / SSE" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;startArrow=block;strokeWidth=3;strokeColor=#7c3aed;fontSize=12;" edge="1" parent="1" source="admin" target="api"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e14" value="API 명령 / 조회" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=3;strokeColor=#7c3aed;fontSize=12;" edge="1" parent="1" source="api" target="queue"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e15" value="저장 / 검색" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;startArrow=block;strokeWidth=3;strokeColor=#0f172a;fontSize=12;" edge="1" parent="1" source="detector" target="storage"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e16" value="AI 설명 / 개선 제안" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;startArrow=block;strokeWidth=3;strokeColor=#9333ea;fontSize=12;" edge="1" parent="1" source="rule" target="openai"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

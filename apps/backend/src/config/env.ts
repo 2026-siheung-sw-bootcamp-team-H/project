@@ -12,6 +12,27 @@ const envSchema = z
       .default("postgresql://siheung:siheung_dev@localhost:5432/siheung?schema=public"),
     REDIS_URL: z.string().default("redis://localhost:6379"),
     QUEUE_ENABLED: z.stringbool().default(false),
+    OPENSEARCH_ENABLED: z.stringbool().default(false),
+    OPENSEARCH_URL: z.url().default("http://localhost:9200"),
+    OPENSEARCH_INDEX: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9_-]*$/)
+      .default("request-events-v1"),
+    OPENSEARCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(5000),
+    SEARCH_OUTBOX_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
+    ZAP_ENABLED: z.stringbool().default(false),
+    ZAP_API_URL: z.url().default("http://localhost:8090"),
+    ZAP_API_KEY: z.string().min(16).default("local-zap-api-key-change-this"),
+    ZAP_TARGET_URL: z.url().default("http://waf:8080/demo-shop"),
+    ZAP_SCAN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(30_000)
+      .max(30 * 60_000)
+      .default(10 * 60_000),
+    SERVICE_CONNECTION_ALLOW_PRIVATE: z.stringbool().default(false),
+    SERVICE_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(500).max(15_000).default(5000),
+    SERVICE_CONNECTION_MAX_BYTES: z.coerce.number().int().min(1024).max(1_048_576).default(65_536),
     JWT_SECRET: z.string().min(32).default(developmentSecret),
     JWT_EXPIRES_IN: z.string().default("30m"),
     ADMIN_EMAIL: z.email().default("admin@sentinel.local"),
@@ -26,7 +47,9 @@ const envSchema = z
     GEMINI_API_KEY: z.string().optional(),
     AI_MODEL: z.string().min(1).optional(),
     AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(20_000),
-    ADVERSARIAL_MAX_ROUNDS: z.coerce.number().int().min(1).max(5).default(3),
+    AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(8192).default(1200),
+    AI_DAILY_CALL_LIMIT: z.coerce.number().int().min(1).max(10_000).default(50),
+    ADVERSARIAL_MAX_ROUNDS: z.coerce.number().int().min(1).max(5).default(5),
     CLEANUP_INTERVAL_MS: z.coerce.number().int().min(60_000).default(3_600_000),
     WAF_RULE_DIR: z.string().default("./var/waf-rules"),
     WAF_RELOAD_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(15_000)
@@ -61,6 +84,19 @@ export const env = {
   databaseUrl: parsed.DATABASE_URL,
   redisUrl: parsed.REDIS_URL,
   queueEnabled: parsed.QUEUE_ENABLED,
+  openSearchEnabled: parsed.OPENSEARCH_ENABLED,
+  openSearchUrl: parsed.OPENSEARCH_URL,
+  openSearchIndex: parsed.OPENSEARCH_INDEX,
+  openSearchTimeoutMs: parsed.OPENSEARCH_TIMEOUT_MS,
+  searchOutboxIntervalMs: parsed.SEARCH_OUTBOX_INTERVAL_MS,
+  zapEnabled: parsed.ZAP_ENABLED,
+  zapApiUrl: parsed.ZAP_API_URL,
+  zapApiKey: parsed.ZAP_API_KEY,
+  zapTargetUrl: parsed.ZAP_TARGET_URL,
+  zapScanTimeoutMs: parsed.ZAP_SCAN_TIMEOUT_MS,
+  serviceConnectionAllowPrivate: parsed.SERVICE_CONNECTION_ALLOW_PRIVATE,
+  serviceConnectionTimeoutMs: parsed.SERVICE_CONNECTION_TIMEOUT_MS,
+  serviceConnectionMaxBytes: parsed.SERVICE_CONNECTION_MAX_BYTES,
   jwtSecret: parsed.JWT_SECRET,
   jwtExpiresIn: parsed.JWT_EXPIRES_IN,
   adminEmail: parsed.ADMIN_EMAIL,
@@ -75,6 +111,8 @@ export const env = {
   geminiApiKey: parsed.GEMINI_API_KEY,
   aiModel: parsed.AI_MODEL,
   aiTimeoutMs: parsed.AI_TIMEOUT_MS,
+  aiMaxOutputTokens: parsed.AI_MAX_OUTPUT_TOKENS,
+  aiDailyCallLimit: parsed.AI_DAILY_CALL_LIMIT,
   adversarialMaxRounds: parsed.ADVERSARIAL_MAX_ROUNDS,
   cleanupIntervalMs: parsed.CLEANUP_INTERVAL_MS,
   wafRuleDir: parsed.WAF_RULE_DIR,

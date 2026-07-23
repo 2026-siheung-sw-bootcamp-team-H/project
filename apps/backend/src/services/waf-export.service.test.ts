@@ -22,4 +22,11 @@ describe("exportModSecurityRule", () => {
     expect(rule).toContain("srcdoc");
     expect(rule).toContain("ARGS_GET|ARGS_POST|REQUEST_BODY");
   });
+
+  it("escapes double quotes inside the ModSecurity operator string", () => {
+    const definition = buildRuleDefinition(AttackCategory.SQL_INJECTION, "SIG-SQLI-001");
+    const rule = exportModSecurityRule(definition, "active");
+    expect(rule).toContain("\\x22");
+    expect(rule).not.toContain(`['"=()]`);
+  });
 });

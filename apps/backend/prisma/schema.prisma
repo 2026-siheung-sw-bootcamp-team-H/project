@@ -12,8 +12,17 @@ enum UserRole {
 }
 
 enum ServiceStatus {
+  PENDING
   CONNECTED
   DISCONNECTED
+  UNHEALTHY
+  DISABLED
+}
+
+enum RequestEventSource {
+  REAL
+  SIMULATION
+  TELEMETRY
 }
 
 enum TrafficClassification {
@@ -98,6 +107,23 @@ enum ApprovalDecision {
   REJECTED
 }
 
+enum SecurityScanStage {
+  INITIAL_SCAN
+  BEFORE_DEPLOYMENT
+  SHADOW_VERIFICATION
+  AFTER_DEPLOYMENT
+  AD_HOC
+}
+
+enum SecurityScanStatus {
+  QUEUED
+  SPIDERING
+  ACTIVE_SCANNING
+  COLLECTING_RESULTS
+  COMPLETED
+  FAILED
+}
+
 model User {
   id           String         @id @default(uuid())
   email        String         @unique
@@ -111,43 +137,55 @@ model User {
 }
 
 model ProtectedService {
-  id                String             @id @default(uuid())
-  name              String
-  slug              String             @unique
-  apiUrl            String
-  connection        String             @default("Nginx + ModSecurity")
-  status            ServiceStatus      @default(CONNECTED)
-  requestEvents     RequestEvent[]
-  rules             SignatureRule[]
-  datasets          Dataset[]
-  deploymentTargets DeploymentTarget[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                  String             @id @default(uuid())
+  name                String
+  slug                String             @unique
+  apiUrl              String
+  publicDomain        String?
+  originUrl           String?
+  proxyUrl            String?
+  connection          String             @default("Nginx + ModSecurity")
+  status              ServiceStatus      @default(CONNECTED)
+  connectedAt         DateTime?
+  lastHealthCheckedAt DateTime?
+  disabledAt          DateTime?
+  requestEvents       RequestEvent[]
+  rules               SignatureRule[]
+  datasets            Dataset[]
+  deploymentTargets   DeploymentTarget[]
+  securityScans       SecurityScanRun[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 }
 
 model RequestEvent {
-  id                String             @id @default(uuid())
-  eventId           String             @unique
+  id                 String              @id @default(uuid())
+  eventId            String              @unique
   protectedServiceId String
-  protectedService  ProtectedService   @relation(fields: [protectedServiceId], references: [id], onDelete: Cascade)
-  method            String
-  path              String
-  contentType       String?
-  bodyHash          String?
-  bodySize          Int                @default(0)
-  ipFingerprint     String?
-  userAgent         String?
-  responseStatus    Int?
-  occurredAt        DateTime           @default(now())
-  sanitizedRequest  SanitizedRequest?
-  replayPayload     SafeReplayPayload?
-  normalizedRequest NormalizedRequest?
-  detections        DetectionResult[]
-  enforcements      EnforcementResult[]
-  sourceRules       SignatureRule[]     @relation("SourceEvent")
-  datasetSamples    DatasetSample[]
+  protectedService   ProtectedService    @relation(fields: [protectedServiceId], references: [id], onDelete: Cascade)
+  method             String
+  path               String
+  contentType        String?
+  bodyHash           String?
+  bodySize           Int                 @default(0)
+  ipFingerprint      String?
+  userAgent          String?
+  responseStatus     Int?
+  source             RequestEventSource  @default(REAL)
+  simulationId       String?
+  occurredAt         DateTime            @default(now())
+  sanitizedRequest   SanitizedRequest?
+  replayPayload      SafeReplayPayload?
+  normalizedRequest  NormalizedRequest?
+  detections         DetectionResult[]
+  enforcements       EnforcementResult[]
+  sourceRules        SignatureRule[]     @relation("SourceEvent")
+  datasetSamples     DatasetSample[]
+  searchOutbox       SearchOutbox?
 
   @@index([protectedServiceId, occurredAt])
+  @@index([source, occurredAt])
+  @@index([simulationId, occurredAt])
   @@index([path, occurredAt])
 }
 
@@ -192,17 +230,17 @@ model NormalizedRequest {
 }
 
 model DetectionResult {
-  id                 String                @id @default(uuid())
-  requestEventId     String
-  requestEvent       RequestEvent          @relation(fields: [requestEventId], references: [id], onDelete: Cascade)
-  ruleVersionId      String?
-  ruleVersion        SignatureRuleVersion? @relation(fields: [ruleVersionId], references: [id], onDelete: SetNull)
-  classification     TrafficClassification
-  attackCategory     AttackCategory?
-  matched            Boolean
-  score              Float                 @default(0)
-  reasons            Json
-  createdAt          DateTime              @default(now())
+  id             String                @id @default(uuid())
+  requestEventId String
+  requestEvent   RequestEvent          @relation(fields: [requestEventId], references: [id], onDelete: Cascade)
+  ruleVersionId  String?
+  ruleVersion    SignatureRuleVersion? @relation(fields: [ruleVersionId], references: [id], onDelete: SetNull)
+  classification TrafficClassification
+  attackCategory AttackCategory?
+  matched        Boolean
+  score          Float                 @default(0)
+  reasons        Json
+  createdAt      DateTime              @default(now())
 
   @@index([requestEventId, createdAt])
   @@index([classification, createdAt])
@@ -224,49 +262,50 @@ model EnforcementResult {
 }
 
 model SignatureRule {
-  id               String                 @id @default(uuid())
-  externalId       String                 @unique
+  id                 String                 @id @default(uuid())
+  externalId         String                 @unique
   protectedServiceId String
-  protectedService ProtectedService       @relation(fields: [protectedServiceId], references: [id], onDelete: Cascade)
-  sourceEventId    String?
-  sourceEvent      RequestEvent?          @relation("SourceEvent", fields: [sourceEventId], references: [id], onDelete: SetNull)
-  category         AttackCategory
-  status           RuleStatus             @default(DRAFT)
-  summary          String
-  currentVersion   Int                    @default(1)
-  confidence       Float                  @default(0)
-  falsePositiveRate Float                 @default(0)
-  versions         SignatureRuleVersion[]
-  validationRuns   ValidationRun[]
-  approvals        RuleApproval[]
-  deployments      DeploymentHistory[]
-  reports          AiReport[]
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  protectedService   ProtectedService       @relation(fields: [protectedServiceId], references: [id], onDelete: Cascade)
+  sourceEventId      String?
+  sourceEvent        RequestEvent?          @relation("SourceEvent", fields: [sourceEventId], references: [id], onDelete: SetNull)
+  category           AttackCategory
+  status             RuleStatus             @default(DRAFT)
+  summary            String
+  currentVersion     Int                    @default(1)
+  confidence         Float                  @default(0)
+  falsePositiveRate  Float                  @default(0)
+  versions           SignatureRuleVersion[]
+  validationRuns     ValidationRun[]
+  approvals          RuleApproval[]
+  deployments        DeploymentHistory[]
+  reports            AiReport[]
+  securityScans      SecurityScanRun[]
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   @@index([protectedServiceId, status])
 }
 
 model SignatureRuleVersion {
-  id              String               @id @default(uuid())
-  ruleId          String
-  rule            SignatureRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  version         Int
-  definition      Json
-  note            String
-  definitionHash  String
-  origin          String               @default("INITIAL")
-  parentVersion   Int?
-  adversarialRound Int?
-  proposalProvider String?
+  id                String              @id @default(uuid())
+  ruleId            String
+  rule              SignatureRule       @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  version           Int
+  definition        Json
+  note              String
+  definitionHash    String
+  origin            String              @default("INITIAL")
+  parentVersion     Int?
+  adversarialRound  Int?
+  proposalProvider  String?
   evaluationMetrics Json?
-  accepted        Boolean              @default(true)
-  modSecurityRule String?
-  detections      DetectionResult[]
-  enforcements    EnforcementResult[]
-  validationRuns  ValidationRun[]
-  deployments     DeploymentHistory[]
-  createdAt       DateTime             @default(now())
+  accepted          Boolean             @default(true)
+  modSecurityRule   String?
+  detections        DetectionResult[]
+  enforcements      EnforcementResult[]
+  validationRuns    ValidationRun[]
+  deployments       DeploymentHistory[]
+  createdAt         DateTime            @default(now())
 
   @@unique([ruleId, version])
   @@index([ruleId, accepted, createdAt])
@@ -288,50 +327,50 @@ model Dataset {
 }
 
 model DatasetSample {
-  id             String        @id @default(uuid())
-  datasetId      String
-  dataset        Dataset       @relation(fields: [datasetId], references: [id], onDelete: Cascade)
-  requestEventId String?
-  requestEvent   RequestEvent? @relation(fields: [requestEventId], references: [id], onDelete: SetNull)
-  kind           SampleKind
-  category       AttackCategory?
-  expectedAttack Boolean
-  payload        Json
-  createdAt      DateTime      @default(now())
+  id                String                 @id @default(uuid())
+  datasetId         String
+  dataset           Dataset                @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  requestEventId    String?
+  requestEvent      RequestEvent?          @relation(fields: [requestEventId], references: [id], onDelete: SetNull)
+  kind              SampleKind
+  category          AttackCategory?
+  expectedAttack    Boolean
+  payload           Json
+  createdAt         DateTime               @default(now())
   validationResults ValidationCaseResult[]
 }
 
 model ValidationRun {
-  id                  String             @id @default(uuid())
+  id                  String                 @id @default(uuid())
   ruleId              String
-  rule                SignatureRule      @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  rule                SignatureRule          @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   ruleVersionId       String
-  ruleVersion         SignatureRuleVersion @relation(fields: [ruleVersionId], references: [id], onDelete: Cascade)
-  status              ValidationStatus   @default(QUEUED)
-  activeKey           String?            @unique
-  attackDetectionRate Float              @default(0)
-  falsePositiveRate   Float              @default(0)
-  bypassSuccessRate   Float              @default(0)
-  confidence          Float              @default(0)
+  ruleVersion         SignatureRuleVersion   @relation(fields: [ruleVersionId], references: [id], onDelete: Cascade)
+  status              ValidationStatus       @default(QUEUED)
+  activeKey           String?                @unique
+  attackDetectionRate Float                  @default(0)
+  falsePositiveRate   Float                  @default(0)
+  bypassSuccessRate   Float                  @default(0)
+  confidence          Float                  @default(0)
   rounds              Json
   cases               ValidationCaseResult[]
   holdoutEvaluation   HoldoutEvaluation?
   startedAt           DateTime?
   completedAt         DateTime?
-  createdAt           DateTime           @default(now())
+  createdAt           DateTime               @default(now())
 }
 
 model ValidationCaseResult {
-  id              String          @id @default(uuid())
+  id              String        @id @default(uuid())
   validationRunId String
-  validationRun   ValidationRun   @relation(fields: [validationRunId], references: [id], onDelete: Cascade)
+  validationRun   ValidationRun @relation(fields: [validationRunId], references: [id], onDelete: Cascade)
   datasetSampleId String
-  datasetSample   DatasetSample   @relation(fields: [datasetSampleId], references: [id], onDelete: Cascade)
+  datasetSample   DatasetSample @relation(fields: [datasetSampleId], references: [id], onDelete: Cascade)
   detected        Boolean
   expectedAttack  Boolean
   matchedReasons  Json
   latencyMs       Float
-  createdAt       DateTime        @default(now())
+  createdAt       DateTime      @default(now())
 
   @@unique([validationRunId, datasetSampleId])
 }
@@ -364,20 +403,21 @@ model DeploymentTarget {
 }
 
 model DeploymentHistory {
-  id              String               @id @default(uuid())
-  ruleId          String
-  rule            SignatureRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  ruleVersionId   String
-  ruleVersion     SignatureRuleVersion @relation(fields: [ruleVersionId], references: [id], onDelete: Cascade)
-  targetId        String
-  target          DeploymentTarget     @relation(fields: [targetId], references: [id], onDelete: Cascade)
-  status          DeploymentStatus
-  artifactPath    String?
-  deployedBy      String?
-  errorMessage    String?
-  deployedAt      DateTime?
-  rolledBackAt    DateTime?
-  createdAt       DateTime             @default(now())
+  id            String               @id @default(uuid())
+  ruleId        String
+  rule          SignatureRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  ruleVersionId String
+  ruleVersion   SignatureRuleVersion @relation(fields: [ruleVersionId], references: [id], onDelete: Cascade)
+  targetId      String
+  target        DeploymentTarget     @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  status        DeploymentStatus
+  artifactPath  String?
+  deployedBy    String?
+  errorMessage  String?
+  deployedAt    DateTime?
+  rolledBackAt  DateTime?
+  securityScans SecurityScanRun[]
+  createdAt     DateTime             @default(now())
 }
 
 model RuleApproval {
@@ -392,9 +432,9 @@ model RuleApproval {
 }
 
 model AiReport {
-  id                       String          @id @default(uuid())
+  id                       String        @id @default(uuid())
   ruleId                   String
-  rule                     SignatureRule   @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  rule                     SignatureRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   validationRunId          String?
   attackSummary            String
   detectionEvidence        Json
@@ -404,7 +444,7 @@ model AiReport {
   operatorGuide            Json
   deploymentRecommendation String
   provider                 String
-  createdAt                DateTime        @default(now())
+  createdAt                DateTime      @default(now())
 }
 
 model AuditLog {
@@ -435,4 +475,70 @@ model AiInvocation {
 
   @@index([provider, task, createdAt])
   @@index([status, createdAt])
+}
+
+model SearchOutbox {
+  id             String       @id @default(uuid())
+  requestEventId String       @unique
+  requestEvent   RequestEvent @relation(fields: [requestEventId], references: [id], onDelete: Cascade)
+  attempts       Int          @default(0)
+  lockedAt       DateTime?
+  processedAt    DateTime?
+  lastError      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([processedAt, lockedAt, createdAt])
+}
+
+model SecurityScanRun {
+  id                 String                @id @default(uuid())
+  activeKey          String?               @unique
+  protectedServiceId String
+  protectedService   ProtectedService      @relation(fields: [protectedServiceId], references: [id], onDelete: Cascade)
+  ruleId             String?
+  rule               SignatureRule?        @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  deploymentId       String?
+  deployment         DeploymentHistory?    @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+  stage              SecurityScanStage
+  status             SecurityScanStatus    @default(QUEUED)
+  targetUrl          String
+  zapSpiderScanId    String?
+  zapActiveScanId    String?
+  progress           Int                   @default(0)
+  alertCount         Int                   @default(0)
+  highCount          Int                   @default(0)
+  mediumCount        Int                   @default(0)
+  lowCount           Int                   @default(0)
+  informationalCount Int                   @default(0)
+  errorMessage       String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  findings           SecurityScanFinding[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([protectedServiceId, createdAt])
+  @@index([ruleId, stage, status, createdAt])
+}
+
+model SecurityScanFinding {
+  id          String          @id @default(uuid())
+  scanRunId   String
+  scanRun     SecurityScanRun @relation(fields: [scanRunId], references: [id], onDelete: Cascade)
+  pluginId    String
+  alert       String
+  risk        String
+  confidence  String
+  url         String
+  method      String?
+  parameter   String?
+  evidence    String?
+  description String?
+  solution    String?
+  reference   String?
+  createdAt   DateTime        @default(now())
+
+  @@index([scanRunId, risk])
+  @@index([pluginId])
 }

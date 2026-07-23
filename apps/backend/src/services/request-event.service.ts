@@ -2,6 +2,7 @@ import {
   AttackCategory,
   EnforcementAction,
   EnforcementSource,
+  RequestEventSource,
   RuleStatus,
   TrafficClassification,
   type Prisma
@@ -20,11 +21,15 @@ import { normalizePayload } from "./normalizer.service.js";
 import { sanitizeRequest, type SanitizedSnapshot } from "./sanitizer.service.js";
 import { evaluateSignature } from "./signature-detector.service.js";
 import { buildRuleDefinition } from "./rule-generator.service.js";
+import { enqueueSearchOutbox } from "./search-index.service.js";
 
 type CaptureOptions = {
   responseStatus?: number;
   forcedClassification?: TrafficClassification;
   eventId?: string;
+  protectedServiceId?: string;
+  source?: RequestEventSource;
+  simulationId?: string;
 };
 
 function inferCategory(normalized: ReturnType<typeof normalizePayload>): AttackCategory | null {
@@ -42,8 +47,13 @@ function parseDefinition(value: Prisma.JsonValue): SignatureDefinition | null {
 
 export async function captureRequestEvent(request: Request, options: CaptureOptions = {}) {
   const snapshot = sanitizeRequest(request);
+  const simulationId = request.header("x-aegis-simulation-id") ?? options.simulationId;
   return captureSnapshot(snapshot, {
     ...options,
+    simulationId,
+    source: simulationId
+      ? RequestEventSource.SIMULATION
+      : (options.source ?? RequestEventSource.REAL),
     contentType: request.header("content-type"),
     userAgent: request.header("user-agent")
   });
@@ -53,7 +63,9 @@ export async function captureSnapshot(
   snapshot: SanitizedSnapshot,
   options: CaptureOptions & { contentType?: string; userAgent?: string } = {}
 ) {
-  const service = await prisma.protectedService.findUnique({ where: { slug: "demo-shop" } });
+  const service = options.protectedServiceId
+    ? await prisma.protectedService.findUnique({ where: { id: options.protectedServiceId } })
+    : await prisma.protectedService.findUnique({ where: { slug: "demo-shop" } });
   if (!service) {
     throw new AppError(
       "Demo Shop 서비스가 초기화되지 않았습니다. seed를 실행해 주세요.",
@@ -92,12 +104,22 @@ export async function captureSnapshot(
     options.forcedClassification ??
     (inferredCategory ? TrafficClassification.ATTACK : TrafficClassification.NORMAL);
 
-  const activeRules = await prisma.signatureRule.findMany({
-    where: { protectedServiceId: service.id, status: RuleStatus.ACTIVE },
+  const deployedRules = await prisma.signatureRule.findMany({
+    where: {
+      protectedServiceId: service.id,
+      status: {
+        in: [
+          RuleStatus.SHADOW_MODE,
+          RuleStatus.APPROVAL_REQUIRED,
+          RuleStatus.APPROVED,
+          RuleStatus.ACTIVE
+        ]
+      }
+    },
     include: { versions: true }
   });
 
-  const evaluatedRules = activeRules.flatMap((rule) => {
+  const evaluatedRules = deployedRules.flatMap((rule) => {
     const version = rule.versions.find((item) => item.version === rule.currentVersion);
     if (!version) return [];
     const definition = parseDefinition(version.definition);
@@ -106,7 +128,9 @@ export async function captureSnapshot(
     return [{ rule, version, result }];
   });
   const matchedRules = evaluatedRules.filter(({ result }) => result.matched);
-  const blocked = matchedRules.length > 0;
+  const blockingRules = matchedRules.filter(({ rule }) => rule.status === RuleStatus.ACTIVE);
+  const monitoringRules = matchedRules.filter(({ rule }) => rule.status !== RuleStatus.ACTIVE);
+  const blocked = blockingRules.length > 0;
   const expiresAt = new Date(Date.now() + env.safeReplayRetentionHours * 60 * 60 * 1000);
 
   const event = await prisma.requestEvent.create({
@@ -121,6 +145,8 @@ export async function captureSnapshot(
       ipFingerprint: snapshot.ipFingerprint,
       userAgent: options.userAgent,
       responseStatus: blocked ? 403 : options.responseStatus,
+      source: options.source ?? RequestEventSource.REAL,
+      simulationId: options.simulationId,
       sanitizedRequest: {
         create: {
           query: asJson(snapshot.query),
@@ -173,27 +199,49 @@ export async function captureSnapshot(
       },
       enforcements: {
         create: {
-          ruleVersionId: matchedRules[0]?.version.id,
-          action: blocked ? EnforcementAction.BLOCK : EnforcementAction.ALLOW,
-          source: blocked ? EnforcementSource.INTERNAL_RULE : EnforcementSource.NONE,
+          ruleVersionId: (blockingRules[0] ?? monitoringRules[0])?.version.id,
+          action: blocked
+            ? EnforcementAction.BLOCK
+            : monitoringRules.length > 0
+              ? EnforcementAction.MONITOR
+              : EnforcementAction.ALLOW,
+          source:
+            blocked || monitoringRules.length > 0
+              ? EnforcementSource.INTERNAL_RULE
+              : EnforcementSource.NONE,
           reason: blocked
-            ? `active rules: ${matchedRules.map(({ rule }) => rule.externalId).join(", ")}`
-            : null
+            ? `active rules: ${blockingRules.map(({ rule }) => rule.externalId).join(", ")}`
+            : monitoringRules.length > 0
+              ? `shadow rules: ${monitoringRules.map(({ rule }) => rule.externalId).join(", ")}`
+              : null
         }
+      },
+      searchOutbox: {
+        create: {}
       }
     },
     include: {
       sanitizedRequest: true,
       normalizedRequest: true,
       detections: true,
-      enforcements: true
+      enforcements: true,
+      searchOutbox: true
     }
   });
 
-  return { event, blocked, category: inferredCategory };
+  if (event.searchOutbox) {
+    void enqueueSearchOutbox(event.searchOutbox.id).catch((error) =>
+      console.warn("Request event search indexing could not be queued.", error)
+    );
+  }
+  const { searchOutbox: _searchOutbox, ...publicEvent } = event;
+  return { event: publicEvent, blocked, category: inferredCategory };
 }
 
 export async function listRequestEvents(filters: {
+  protectedServiceId?: string;
+  source?: RequestEventSource;
+  simulationId?: string;
   classification?: TrafficClassification;
   category?: AttackCategory;
   limit?: number;
@@ -201,6 +249,9 @@ export async function listRequestEvents(filters: {
 }) {
   return prisma.requestEvent.findMany({
     where: {
+      protectedServiceId: filters.protectedServiceId,
+      source: filters.source,
+      simulationId: filters.simulationId,
       detections:
         filters.classification || filters.category
           ? {

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Heart, LockKeyhole, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { LockKeyhole, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useShopStore } from "@/stores/shopStore";
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
 export function ShopLayout() {
   const [query, setQuery] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { pathname } = useLocation();
   const navigate = useNavigate();
   const cartCount = useShopStore((state) =>
     state.cart.reduce((total, item) => total + item.quantity, 0)
@@ -27,6 +28,10 @@ export function ShopLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!query.trim()) return;
@@ -37,7 +42,7 @@ export function ShopLayout() {
   return (
     <div className="min-h-screen bg-[#f7f6f2] font-sans text-stone-900">
       <div className="bg-stone-950 px-4 py-2 text-center text-[11px] font-medium tracking-wide text-stone-200">
-        Demo Shop · 모든 요청은 Aegis Loop 보안 콘솔에서 관찰됩니다
+        Demo Shop · 검색·로그인·리뷰 테스트 요청은 ANVIL에서 관찰됩니다
       </div>
       <header className="sticky top-0 z-30 border-b border-stone-200/90 bg-[#f7f6f2]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-18 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
@@ -87,13 +92,6 @@ export function ShopLayout() {
             >
               <Search className="size-5" />
             </Link>
-            <button
-              type="button"
-              aria-label="관심 상품"
-              className="hidden rounded-full p-2.5 hover:bg-stone-200 sm:block"
-            >
-              <Heart className="size-5" />
-            </button>
             <Link
               to="/demo-shop/login"
               aria-label={customer ? `${customer.name} 계정` : "로그인"}
@@ -191,7 +189,7 @@ export function ShopLayout() {
           <div className="text-xs leading-7">
             <p className="mb-2 font-bold text-white">Security demo</p>
             <Link to="/login" className="flex items-center gap-2 text-cyan-300 hover:text-cyan-200">
-              <LockKeyhole className="size-3.5" /> Aegis Loop 열기
+              <LockKeyhole className="size-3.5" /> ANVIL 열기
             </Link>
             <p>수집 대상: Demo Shop API</p>
           </div>

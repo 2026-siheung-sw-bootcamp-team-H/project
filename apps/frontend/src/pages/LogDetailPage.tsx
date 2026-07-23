@@ -1,30 +1,37 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, FileCode2, ScanSearch } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, FileCode2, RefreshCw, ScanSearch } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ErrorState, LoadingState, PageHeader, StatusBadge } from "@/components/ui";
-import { buttonPrimary } from "@/lib/display";
+import { buttonPrimary, buttonSecondary } from "@/lib/display";
 import { platformApi } from "@/services/platformApi";
-import { useDemoFlowStore } from "@/stores/demoFlowStore";
 
 export function LogDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const ruleCreated = useDemoFlowStore((state) => state.ruleCreated);
-  const advance = useDemoFlowStore((state) => state.advance);
+  const queryClient = useQueryClient();
   const {
     data: log,
     isLoading,
     isError
-  } = useQuery({ queryKey: ["log", id], queryFn: () => platformApi.getLog(id) });
-  const mutation = useMutation({
+  } = useQuery({
+    queryKey: ["log", id],
+    queryFn: () => platformApi.getLog(id)
+  });
+  const normalize = useMutation({
+    mutationFn: () => platformApi.normalizeLog(id),
+    onSuccess: (result) => queryClient.setQueryData(["log", id], result)
+  });
+  const createRule = useMutation({
     mutationFn: () => platformApi.generateRule(id),
     onSuccess: (rule) => {
-      advance(3);
+      void queryClient.invalidateQueries({ queryKey: ["rules"] });
       navigate(`/rules/${rule.id}`);
     }
   });
+
   if (isLoading) return <LoadingState />;
   if (isError || !log) return <ErrorState message="요청 로그를 찾지 못했습니다." />;
+  const canGenerate = Boolean(log.attackCategory);
 
   return (
     <div className="space-y-7">
@@ -36,42 +43,50 @@ export function LogDetailPage() {
         실시간 요청
       </Link>
       <PageHeader
-        eyebrow="Step 3 · Signature"
-        title="이 요청을 방어 룰로 전환"
-        description="원문 전체를 외우는 룰이 아니라, 같은 공격 유형을 다시 찾아낼 수 있는 핵심 토큰과 조건을 추출합니다."
+        eyebrow={`Request · ${log.id}`}
+        title="요청 분석과 시그니처 생성"
+        description="수집된 요청의 비식별 원본, 정규화 결과, 탐지 근거를 확인하고 공격 요청에서 방어 룰 초안을 생성합니다."
         actions={
-          <div className="flex flex-wrap gap-2">
+          <>
             <button
               type="button"
-              onClick={() => mutation.mutate()}
-              disabled={mutation.isPending || ruleCreated}
+              onClick={() => normalize.mutate()}
+              disabled={normalize.isPending}
+              className={buttonSecondary}
+            >
+              <RefreshCw className={`size-4 ${normalize.isPending ? "animate-spin" : ""}`} />
+              다시 정규화
+            </button>
+            <button
+              type="button"
+              onClick={() => createRule.mutate()}
+              disabled={createRule.isPending || !canGenerate}
               className={buttonPrimary}
             >
-              {ruleCreated ? (
-                <>
-                  <Check className="size-4" />
-                  생성 완료
-                </>
-              ) : (
-                <>
-                  <FileCode2 className="size-4" />
-                  {mutation.isPending ? "생성 중..." : "시그니처 만들기"}
-                  <ArrowRight className="size-4" />
-                </>
-              )}
+              <FileCode2 className="size-4" />
+              {createRule.isPending ? "룰 생성 중..." : "시그니처 생성"}
+              <ArrowRight className="size-4" />
             </button>
             <StatusBadge status={log.classification} />
             <StatusBadge status={log.action} />
-          </div>
+          </>
         }
       />
+      {!canGenerate && (
+        <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.07] p-4 text-sm text-amber-200">
+          정상 요청에서는 방어 룰을 만들 수 없습니다. 공격 또는 의심 요청을 선택하세요.
+        </div>
+      )}
+      {(createRule.isError || normalize.isError) && (
+        <ErrorState message={(createRule.error ?? normalize.error)?.message} />
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div className="space-y-5">
           <section className="overflow-hidden rounded-lg border border-white/[0.06] bg-[#1e1f22]">
             <div className="border-b border-white/[0.06] px-5 py-4">
-              <h2 className="text-sm font-semibold text-white">요청 원문</h2>
-              <p className="mt-1 text-xs text-[#949ba4]">사용자가 실제로 보낸 HTTP 요청입니다.</p>
+              <h2 className="text-sm font-semibold text-white">비식별 요청 원문</h2>
+              <p className="mt-1 text-xs text-[#949ba4]">민감 정보는 수집 단계에서 제거됩니다.</p>
             </div>
             <pre className="overflow-x-auto p-5 font-mono text-xs leading-6 text-rose-200">
               {log.rawRequest}
@@ -81,56 +96,80 @@ export function LogDetailPage() {
             <div className="border-b border-white/[0.06] px-5 py-4">
               <h2 className="text-sm font-semibold text-white">정규화 결과</h2>
               <p className="mt-1 text-xs text-[#949ba4]">
-                인코딩과 대소문자 차이를 제거해 비교 가능한 형태로 바꿨습니다.
+                인코딩과 주석 차이를 제거해 비교 가능한 형태로 변환합니다.
               </p>
             </div>
             <p className="break-all p-5 font-mono text-sm leading-6 text-emerald-200">
-              {log.normalizedRequest}
+              {log.normalizedRequest || "정규화 결과 없음"}
             </p>
           </section>
         </div>
         <aside className="space-y-5">
-          <section className="rounded-lg border border-white/[0.06] bg-[#1e1f22] p-5">
+          <section className="security-panel rounded-md p-5">
             <div className="flex items-center gap-3">
-              <ScanSearch className="size-5 text-[#949cf7]" />
-              <h2 className="text-sm font-semibold text-white">탐지 근거</h2>
+              <ScanSearch className="size-5 text-[#38bdf8]" />
+              <h2 className="text-sm font-semibold text-white">탐지·처리 근거</h2>
             </div>
-            <dl className="mt-5 space-y-4">
+            <dl className="mt-5 space-y-5">
               <div>
-                <dt className="text-xs text-[#6d6f78]">공격 유형</dt>
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-[#64748b]">
+                  Attack category
+                </dt>
                 <dd className="mt-1 text-sm font-semibold text-white">
-                  {log.attackCategory ?? "미분류"}
+                  {log.attackCategory ?? "정상 또는 미분류"}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-[#6d6f78]">추출된 토큰</dt>
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-[#64748b]">
+                  Detection reason
+                </dt>
+                <dd className="mt-2 space-y-2">
+                  {log.detectionReasons.length ? (
+                    log.detectionReasons.map((reason) => (
+                      <p
+                        key={reason}
+                        className="border-l-2 border-[#f59e0b] pl-3 text-xs leading-5 text-[#d1d5db]"
+                      >
+                        {reason}
+                      </p>
+                    ))
+                  ) : (
+                    <span className="text-xs text-[#9ca3af]">저장된 탐지 사유가 없습니다.</span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-[#64748b]">
+                  Extracted tokens
+                </dt>
                 <dd className="mt-2 flex flex-wrap gap-2">
-                  {log.tokens.map((token) => (
-                    <code
-                      key={token}
-                      className="rounded bg-[#111214] px-2 py-1 text-xs text-[#c9cdfb]"
-                    >
-                      {token}
-                    </code>
-                  ))}
+                  {log.tokens.length ? (
+                    log.tokens.map((token) => (
+                      <code
+                        key={token}
+                        className="rounded-sm border border-[#273244] bg-[#0b0f19] px-2 py-1 text-xs text-[#a5b4fc]"
+                      >
+                        {token}
+                      </code>
+                    ))
+                  ) : (
+                    <span className="text-xs text-[#9ca3af]">토큰 없음</span>
+                  )}
                 </dd>
               </div>
-              <div>
-                <dt className="text-xs text-[#6d6f78]">처리 결과</dt>
-                <dd className="mt-1 text-sm text-white">
-                  HTTP {log.statusCode} · {log.action === "blocked" ? "요청 차단" : "요청 허용"}
-                </dd>
+              <div className="grid grid-cols-2 gap-3 border-t border-[#273244] pt-4">
+                <div>
+                  <dt className="text-[10px] text-[#64748b]">ENFORCEMENT SOURCE</dt>
+                  <dd className="mt-1 text-xs text-white">{log.enforcementSource}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] text-[#64748b]">RESULT</dt>
+                  <dd className="mt-1 text-xs text-white">
+                    HTTP {log.statusCode || "-"} · {log.action.toUpperCase()}
+                  </dd>
+                </div>
               </div>
             </dl>
-          </section>
-          <section className="rounded-lg border border-[#5865f2]/30 bg-[#5865f2]/10 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#949cf7]">
-              현재 작업
-            </p>
-            <h2 className="mt-2 text-lg font-bold text-white">시그니처 초안 생성</h2>
-            <p className="mt-2 text-sm leading-6 text-[#b5bac1]">
-              UNION, SELECT와 특수문자 밀도를 조합한 탐지 조건을 만듭니다.
-            </p>
           </section>
         </aside>
       </div>

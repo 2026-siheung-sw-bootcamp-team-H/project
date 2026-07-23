@@ -31,10 +31,14 @@ services:
     restart: unless-stopped
 
   backend:
-    image: siheung-backend:latest
+    container_name: siheung-backend-0301
+    image: siheung-backend:0.3.1
+    platform: linux/amd64
     build:
       context: .
       dockerfile: Dockerfile.backend
+    env_file:
+      - ./apps/backend/.env
     command:
       [
         "sh",
@@ -48,21 +52,26 @@ services:
       DATABASE_URL: postgresql://siheung:siheung_dev@postgres:5432/siheung?schema=public
       REDIS_URL: redis://redis:6379
       QUEUE_ENABLED: "true"
+      OPENSEARCH_ENABLED: "true"
+      OPENSEARCH_URL: http://opensearch:9200
+      OPENSEARCH_INDEX: request-events-v1
+      OPENSEARCH_TIMEOUT_MS: ${OPENSEARCH_TIMEOUT_MS:-5000}
+      SEARCH_OUTBOX_INTERVAL_MS: ${SEARCH_OUTBOX_INTERVAL_MS:-5000}
+      ZAP_ENABLED: "true"
+      ZAP_API_URL: http://zap:8080
+      ZAP_API_KEY: ${ZAP_API_KEY:-local-zap-api-key-change-this}
+      ZAP_TARGET_URL: http://waf:8080/demo-shop
+      ZAP_SCAN_TIMEOUT_MS: ${ZAP_SCAN_TIMEOUT_MS:-600000}
+      SERVICE_CONNECTION_ALLOW_PRIVATE: "true"
       JWT_SECRET: ${JWT_SECRET:-local-compose-jwt-secret-change-this-value}
       HMAC_SECRET: ${HMAC_SECRET:-local-compose-hmac-secret-change-this-value}
       TELEMETRY_TOKEN: ${TELEMETRY_TOKEN:-local-compose-telemetry-service-token}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-demo1234}
-      AI_PROVIDER: ${AI_PROVIDER:-none}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      AI_MODEL: ${AI_MODEL:-gpt-4.1-mini}
-      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-20000}
-      ADVERSARIAL_MAX_ROUNDS: ${ADVERSARIAL_MAX_ROUNDS:-3}
       CLEANUP_INTERVAL_MS: ${CLEANUP_INTERVAL_MS:-3600000}
       WAF_RULE_DIR: /app/var/waf-rules
       WAF_RELOAD_TIMEOUT_MS: ${WAF_RELOAD_TIMEOUT_MS:-15000}
-    expose:
-      - "4000"
+    ports:
+      - "4000:4000"
     volumes:
       - ./waf/rules:/app/var/waf-rules
     depends_on:
@@ -85,23 +94,32 @@ services:
     restart: unless-stopped
 
   worker:
-    image: siheung-backend:latest
+    container_name: siheung-worker-0301
+    image: siheung-backend:0.3.1
+    platform: linux/amd64
     command: ["node", "apps/backend/dist/worker.js"]
+    env_file:
+      - ./apps/backend/.env
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://siheung:siheung_dev@postgres:5432/siheung?schema=public
       REDIS_URL: redis://redis:6379
       QUEUE_ENABLED: "true"
+      OPENSEARCH_ENABLED: "true"
+      OPENSEARCH_URL: http://opensearch:9200
+      OPENSEARCH_INDEX: request-events-v1
+      OPENSEARCH_TIMEOUT_MS: ${OPENSEARCH_TIMEOUT_MS:-5000}
+      SEARCH_OUTBOX_INTERVAL_MS: ${SEARCH_OUTBOX_INTERVAL_MS:-5000}
+      ZAP_ENABLED: "true"
+      ZAP_API_URL: http://zap:8080
+      ZAP_API_KEY: ${ZAP_API_KEY:-local-zap-api-key-change-this}
+      ZAP_TARGET_URL: http://waf:8080/demo-shop
+      ZAP_SCAN_TIMEOUT_MS: ${ZAP_SCAN_TIMEOUT_MS:-600000}
+      SERVICE_CONNECTION_ALLOW_PRIVATE: "true"
       JWT_SECRET: ${JWT_SECRET:-local-compose-jwt-secret-change-this-value}
       HMAC_SECRET: ${HMAC_SECRET:-local-compose-hmac-secret-change-this-value}
       TELEMETRY_TOKEN: ${TELEMETRY_TOKEN:-local-compose-telemetry-service-token}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-demo1234}
-      AI_PROVIDER: ${AI_PROVIDER:-none}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      AI_MODEL: ${AI_MODEL:-gpt-4.1-mini}
-      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-20000}
-      ADVERSARIAL_MAX_ROUNDS: ${ADVERSARIAL_MAX_ROUNDS:-3}
       CLEANUP_INTERVAL_MS: ${CLEANUP_INTERVAL_MS:-3600000}
       WAF_RULE_DIR: /app/var/waf-rules
       WAF_RELOAD_TIMEOUT_MS: ${WAF_RELOAD_TIMEOUT_MS:-15000}
@@ -128,7 +146,7 @@ services:
       BLOCKING_PARANOIA: 1
       DETECTION_PARANOIA: 1
     ports:
-      - "8080:8080"
+      - "${WAF_PORT:-8080}:8080"
     volumes:
       - ./waf/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:ro
       - ./waf/rules:/opt/siheung/state
@@ -154,19 +172,63 @@ services:
     restart: unless-stopped
 
   opensearch:
-    image: opensearchproject/opensearch:3
-    profiles: ["search"]
+    image: opensearchproject/opensearch:3.3.2
     environment:
       discovery.type: single-node
-      plugins.security.disabled: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
       OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
     ports:
       - "9200:9200"
     volumes:
       - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:2.17.0
+    command:
+      [
+        "zap.sh",
+        "-daemon",
+        "-host",
+        "0.0.0.0",
+        "-port",
+        "8080",
+        "-config",
+        "api.disablekey=false",
+        "-config",
+        "api.key=${ZAP_API_KEY:-local-zap-api-key-change-this}",
+        "-config",
+        "api.addrs.addr.name=.*",
+        "-config",
+        "api.addrs.addr.regex=true",
+        "-config",
+        "autoupdate.checkOnStart=false",
+        "-config",
+        "autoupdate.downloadNewRelease=false",
+        "-config",
+        "autoupdate.installAddonUpdates=false"
+      ]
+    environment:
+      _JAVA_OPTIONS: -Xms256m -Xmx512m
+    expose:
+      - "8080"
+    volumes:
+      - zap-data:/home/zap/.ZAP
+    depends_on:
+      waf:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres-data:
   redis-data:
   waf-logs:
   opensearch-data:
+  zap-data:

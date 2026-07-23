@@ -1,4 +1,4 @@
-import { Heart, ShoppingBag, Star } from "lucide-react";
+import { ShoppingBag, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatPrice } from "@/lib/display";
 import { useShopStore } from "@/stores/shopStore";
@@ -26,13 +26,6 @@ export function ProductCard({ product }: { product: Product }) {
             {product.badge}
           </span>
         )}
-        <button
-          type="button"
-          aria-label={`${product.name} 관심 상품 추가`}
-          className="absolute right-4 top-4 grid size-9 place-items-center rounded-full bg-white/85 text-stone-700 opacity-0 shadow-sm backdrop-blur transition hover:text-orange-600 group-hover:opacity-100 focus:opacity-100"
-        >
-          <Heart className="size-4" />
-        </button>
         <button
           type="button"
           onClick={() => addToCart(product.id)}

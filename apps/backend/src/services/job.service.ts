@@ -2,14 +2,14 @@ import { env } from "../config/env.js";
 import { getSecurityQueue } from "../config/queue.js";
 import { AppError } from "../utils/app-error.js";
 
-export type SecurityJobName = "validate-rule" | "generate-report";
+export type SecurityJobName = "validate-rule" | "generate-report" | "run-zap-scan";
 
 export async function enqueueSecurityJob(name: SecurityJobName, data: Record<string, string>) {
   if (!env.queueEnabled) {
     throw new AppError("작업 큐가 비활성화되어 있습니다.", 409, "QUEUE_DISABLED");
   }
   const queue = getSecurityQueue();
-  const resourceId = data.ruleId;
+  const resourceId = data.ruleId ?? data.scanRunId;
   const jobId = resourceId ? `${name}--${resourceId}` : undefined;
   if (jobId) {
     const existing = await queue.getJob(jobId);
@@ -21,7 +21,10 @@ export async function enqueueSecurityJob(name: SecurityJobName, data: Record<str
       await existing.remove();
     }
   }
-  const job = await queue.add(name, data, jobId ? { jobId } : undefined);
+  const job = await queue.add(name, data, {
+    ...(jobId ? { jobId } : {}),
+    ...(name === "run-zap-scan" ? { attempts: 1 } : {})
+  });
   return { jobId: job.id, name, status: "queued", deduplicated: false };
 }
 

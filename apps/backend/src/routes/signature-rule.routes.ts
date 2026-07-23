@@ -5,7 +5,9 @@ import {
   approve,
   deploy,
   generateRule,
+  getArtifact,
   getRule,
+  getShadowObservation,
   listRules,
   reject,
   requestApproval,
@@ -26,6 +28,16 @@ signatureRuleRouter.get(
   "/:id",
   validateRequest({ params: z.object({ id: z.string().uuid() }) }),
   getRule
+);
+signatureRuleRouter.get(
+  "/:id/artifact",
+  validateRequest({ params: z.object({ id: z.string().uuid() }) }),
+  getArtifact
+);
+signatureRuleRouter.get(
+  "/:id/shadow-metrics",
+  validateRequest({ params: z.object({ id: z.string().uuid() }) }),
+  getShadowObservation
 );
 signatureRuleRouter.post(
   "/:id/validate",

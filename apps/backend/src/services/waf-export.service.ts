@@ -97,7 +97,8 @@ export function exportModSecurityRule(
 ): string {
   const id = numericRuleId(definition.id, definition.version);
   const action = mode === "active" ? "deny,status:403" : "pass";
-  return `SecRule ${variablesFor(definition)} "@rx ${patternFor(definition)}" "id:${id},phase:2,${action},log,t:none,msg:'${definition.id} ${definition.category}',tag:'siheung-signature'"`;
+  const operatorPattern = patternFor(definition).replaceAll('"', "\\x22");
+  return `SecRule ${variablesFor(definition)} "@rx ${operatorPattern}" "id:${id},phase:2,${action},log,t:none,msg:'${definition.id} ${definition.category}',tag:'siheung-signature'"`;
 }
 
 export async function rebuildModSecurityArtifact(): Promise<string> {
