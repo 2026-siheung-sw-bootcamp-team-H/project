@@ -42,7 +42,7 @@ async function refreshSecurityViews() {
 export const shopApi = {
   async getProduct(productId: string): Promise<ShopRequestResult<Product>> {
     const result = await apiClient<ShopRequestResult<BackendProduct>>(
-      `/demo-shop/products?id=${encodeURIComponent(productId)}`
+      `/api/demo-shop/products?id=${encodeURIComponent(productId)}`
     );
     await refreshSecurityViews();
     return { ...result, data: enrichProduct(result.data) };
@@ -51,7 +51,7 @@ export const shopApi = {
   async search(query: string): Promise<ShopRequestResult<Product[]>> {
     try {
       const result = await apiClient<ShopRequestResult<BackendProduct[]>>(
-        `/demo-shop/search?q=${encodeURIComponent(query)}`,
+        `/api/demo-shop/search?q=${encodeURIComponent(query)}`,
         { acceptErrorData: true }
       );
       await refreshSecurityViews();
@@ -71,7 +71,7 @@ export const shopApi = {
   ): Promise<ShopRequestResult<Product[]>> {
     try {
       const result = await apiClient<ShopRequestResult<BackendProduct[]>>(
-        `/demo-shop/search?q=${encodeURIComponent(payload)}`,
+        `/api/demo-shop/search?q=${encodeURIComponent(payload)}`,
         {
           acceptErrorData: true,
           headers: {
@@ -95,14 +95,14 @@ export const shopApi = {
     const result = await apiClient<{
       customer: { name: string; email: string };
       requestId: string;
-    }>("/demo-shop/login", { method: "POST", body: { email, password } });
+    }>("/api/demo-shop/login", { method: "POST", body: { email, password } });
     await refreshSecurityViews();
     return result;
   },
 
   async createReview(productId: string, content: string) {
     const result = await apiClient<{ accepted: boolean; blocked: boolean; requestId: string }>(
-      "/demo-shop/reviews",
+      "/api/demo-shop/reviews",
       { method: "POST", body: { productId, content }, acceptErrorData: true }
     );
     await refreshSecurityViews();

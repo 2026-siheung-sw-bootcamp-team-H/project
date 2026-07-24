@@ -126,18 +126,19 @@ export async function ensureBootstrapData() {
   const service = await prisma.protectedService.upsert({
     where: { slug: "demo-shop" },
     update: {
-      publicDomain: "http://localhost:8081/demo-shop",
-      originUrl: "http://backend:4000/demo-shop",
-      proxyUrl: env.zapTargetUrl,
+      apiUrl: env.demoShopOriginUrl,
+      publicDomain: env.demoShopPublicUrl,
+      originUrl: env.demoShopOriginUrl,
+      proxyUrl: env.demoShopWafUrl,
       connectedAt: new Date()
     },
     create: {
       name: "Demo Shop API",
       slug: "demo-shop",
-      apiUrl: "http://backend:4000/demo-shop",
-      publicDomain: "http://localhost:8081/demo-shop",
-      originUrl: "http://backend:4000/demo-shop",
-      proxyUrl: env.zapTargetUrl,
+      apiUrl: env.demoShopOriginUrl,
+      publicDomain: env.demoShopPublicUrl,
+      originUrl: env.demoShopOriginUrl,
+      proxyUrl: env.demoShopWafUrl,
       connectedAt: new Date()
     }
   });

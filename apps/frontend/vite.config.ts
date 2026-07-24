@@ -19,18 +19,14 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       strictPort: true,
       proxy: {
+        "/api/demo-shop": {
+          target: wafProxyTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/demo-shop/, "/demo-shop")
+        },
         "/api": {
           target: apiProxyTarget,
           changeOrigin: true
-        },
-        "/demo-shop": {
-          target: wafProxyTarget,
-          changeOrigin: true,
-          bypass(request) {
-            if (request.headers.accept?.includes("text/html")) {
-              return "/index.html";
-            }
-          }
         }
       }
     }

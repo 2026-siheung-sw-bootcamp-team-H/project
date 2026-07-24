@@ -24,6 +24,9 @@ const envSchema = z
     ZAP_API_URL: z.url().default("http://localhost:8090"),
     ZAP_API_KEY: z.string().min(16).default("local-zap-api-key-change-this"),
     ZAP_TARGET_URL: z.url().default("http://waf:8080/demo-shop"),
+    DEMO_SHOP_PUBLIC_URL: z.url().default("http://localhost:8081/demo-shop"),
+    DEMO_SHOP_ORIGIN_URL: z.url().default("http://backend:4000/demo-shop"),
+    DEMO_SHOP_WAF_URL: z.url().default("http://waf:8080/demo-shop"),
     ZAP_SCAN_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -93,6 +96,9 @@ export const env = {
   zapApiUrl: parsed.ZAP_API_URL,
   zapApiKey: parsed.ZAP_API_KEY,
   zapTargetUrl: parsed.ZAP_TARGET_URL,
+  demoShopPublicUrl: parsed.DEMO_SHOP_PUBLIC_URL,
+  demoShopOriginUrl: parsed.DEMO_SHOP_ORIGIN_URL,
+  demoShopWafUrl: parsed.DEMO_SHOP_WAF_URL,
   zapScanTimeoutMs: parsed.ZAP_SCAN_TIMEOUT_MS,
   serviceConnectionAllowPrivate: parsed.SERVICE_CONNECTION_ALLOW_PRIVATE,
   serviceConnectionTimeoutMs: parsed.SERVICE_CONNECTION_TIMEOUT_MS,
