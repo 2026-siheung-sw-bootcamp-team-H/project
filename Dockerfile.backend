@@ -18,7 +18,7 @@ FROM node:24-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
-RUN addgroup -S nodejs && adduser -S backend -G nodejs
+RUN addgroup -S -g 10001 nodejs && adduser -S -u 10001 backend -G nodejs
 COPY --from=build --chown=backend:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=backend:nodejs /app/apps/backend/dist ./apps/backend/dist
 COPY --from=build --chown=backend:nodejs /app/apps/backend/prisma ./apps/backend/prisma

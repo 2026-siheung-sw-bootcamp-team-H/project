@@ -1,0 +1,251 @@
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  PORT: 4000
+  CLIENT_ORIGIN: ${CLIENT_ORIGIN:?Set CLIENT_ORIGIN to the stable Vercel production origin}
+  DATABASE_URL: postgresql://siheung:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/siheung?schema=public
+  REDIS_URL: redis://redis:6379
+  QUEUE_ENABLED: "true"
+  OPENSEARCH_ENABLED: "true"
+  OPENSEARCH_URL: http://opensearch:9200
+  OPENSEARCH_INDEX: request-events-v1
+  OPENSEARCH_TIMEOUT_MS: ${OPENSEARCH_TIMEOUT_MS:-5000}
+  SEARCH_OUTBOX_INTERVAL_MS: ${SEARCH_OUTBOX_INTERVAL_MS:-5000}
+  ZAP_ENABLED: "true"
+  ZAP_API_URL: http://zap:8080
+  ZAP_API_KEY: ${ZAP_API_KEY:?Set ZAP_API_KEY}
+  ZAP_TARGET_URL: http://waf:8080/demo-shop
+  DEMO_SHOP_PUBLIC_URL: https://${EDGE_SERVER_NAME:?Set EDGE_SERVER_NAME}/demo-shop
+  DEMO_SHOP_ORIGIN_URL: http://backend:4000/demo-shop
+  DEMO_SHOP_WAF_URL: http://waf:8080/demo-shop
+  ZAP_SCAN_TIMEOUT_MS: ${ZAP_SCAN_TIMEOUT_MS:-600000}
+  SERVICE_CONNECTION_ALLOW_PRIVATE: "true"
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  HMAC_SECRET: ${HMAC_SECRET:?Set HMAC_SECRET}
+  TELEMETRY_TOKEN: ${TELEMETRY_TOKEN:?Set TELEMETRY_TOKEN}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sentinel.local}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-demo1234}
+  AI_PROVIDER: ${AI_PROVIDER:-openai}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  AI_MODEL: ${AI_MODEL:-gpt-4.1-mini}
+  AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-20000}
+  AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-1200}
+  AI_DAILY_CALL_LIMIT: ${AI_DAILY_CALL_LIMIT:-50}
+  ADVERSARIAL_MAX_ROUNDS: ${ADVERSARIAL_MAX_ROUNDS:-5}
+  CLEANUP_INTERVAL_MS: ${CLEANUP_INTERVAL_MS:-3600000}
+  WAF_RULE_DIR: /app/var/waf-rules
+  WAF_RELOAD_TIMEOUT_MS: ${WAF_RELOAD_TIMEOUT_MS:-15000}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: siheung
+      POSTGRES_USER: siheung
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-production-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U siheung -d siheung"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-production-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:3.3.2
+    environment:
+      discovery.type: single-node
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: ${OPENSEARCH_JAVA_OPTS:--Xms512m -Xmx512m}
+    volumes:
+      - opensearch-production-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 45s
+    restart: unless-stopped
+
+  backend:
+    image: siheung-backend:production
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command:
+      [
+        "sh",
+        "-c",
+        "./node_modules/.bin/prisma migrate deploy --schema apps/backend/prisma/schema.prisma && node apps/backend/dist/index.js"
+      ]
+    environment: *backend-environment
+    volumes:
+      - ./waf/rules:/app/var/waf-rules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    image: siheung-backend:production
+    command: ["node", "apps/backend/dist/worker.js"]
+    environment: *backend-environment
+    volumes:
+      - ./waf/rules:/app/var/waf-rules
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  waf:
+    image: owasp/modsecurity-crs:4.25-nginx-lts
+    entrypoint: ["/bin/sh", "/opt/siheung/start-with-reloader.sh"]
+    command: ["nginx", "-g", "daemon off;"]
+    environment:
+      BACKEND: http://backend:4000
+      PORT: 8080
+      MODSEC_RULE_ENGINE: "on"
+      MODSEC_AUDIT_ENGINE: RelevantOnly
+      MODSEC_AUDIT_LOG: /var/log/modsecurity/audit/modsec_audit.log
+      MODSEC_AUDIT_LOG_PARTS: AIJDEFHZ
+      BLOCKING_PARANOIA: 1
+      DETECTION_PARANOIA: 1
+    volumes:
+      - ./waf/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:/etc/modsecurity.d/owasp-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:ro
+      - ./waf/rules:/opt/siheung/state
+      - ./waf/reload-on-change.sh:/opt/siheung/reload-on-change.sh:ro
+      - ./waf/start-with-reloader.sh:/opt/siheung/start-with-reloader.sh:ro
+      - waf-production-logs:/var/log
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:8080/demo-shop/search?q=desk' >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:2.17.0
+    command:
+      [
+        "zap.sh",
+        "-daemon",
+        "-host",
+        "0.0.0.0",
+        "-port",
+        "8080",
+        "-config",
+        "api.disablekey=false",
+        "-config",
+        "api.key=${ZAP_API_KEY:?Set ZAP_API_KEY}",
+        "-config",
+        "api.addrs.addr.name=.*",
+        "-config",
+        "api.addrs.addr.regex=true",
+        "-config",
+        "autoupdate.checkOnStart=false",
+        "-config",
+        "autoupdate.downloadNewRelease=false",
+        "-config",
+        "autoupdate.installAddonUpdates=false"
+      ]
+    environment:
+      _JAVA_OPTIONS: -Xms256m -Xmx512m
+    volumes:
+      - zap-production-data:/home/zap/.ZAP
+    depends_on:
+      waf:
+        condition: service_healthy
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.136.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    environment:
+      TELEMETRY_TOKEN: ${TELEMETRY_TOKEN:?Set TELEMETRY_TOKEN}
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - waf-production-logs:/var/log/waf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  edge:
+    image: nginx:1.28-alpine
+    environment:
+      EDGE_SERVER_NAME: ${EDGE_SERVER_NAME:?Set EDGE_SERVER_NAME}
+      NGINX_ENVSUBST_FILTER: EDGE_SERVER_NAME
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/edge/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - certbot-certs:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      waf:
+        condition: service_healthy
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:v4.0.0
+    profiles: ["certificate"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        certbot certonly --standalone --non-interactive --agree-tos --no-eff-email
+        --email "$$CERTBOT_EMAIL" -d "$$EDGE_SERVER_NAME"
+    environment:
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL:?Set CERTBOT_EMAIL}
+      EDGE_SERVER_NAME: ${EDGE_SERVER_NAME:?Set EDGE_SERVER_NAME}
+    ports:
+      - "80:80"
+    volumes:
+      - certbot-certs:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+
+volumes:
+  postgres-production-data:
+  redis-production-data:
+  opensearch-production-data:
+  waf-production-logs:
+  zap-production-data:
+  certbot-certs:
+  certbot-webroot:
