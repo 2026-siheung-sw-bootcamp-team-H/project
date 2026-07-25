@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -52,6 +53,7 @@ export function RuleDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [validationElapsedSeconds, setValidationElapsedSeconds] = useState(0);
   const {
     data: rule,
     isLoading,
@@ -66,10 +68,25 @@ export function RuleDetailPage() {
       navigate(`/validation/${run.id}`);
     }
   });
+  useEffect(() => {
+    if (!validation.isPending) {
+      setValidationElapsedSeconds(0);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setValidationElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [validation.isPending]);
+
   if (isLoading) return <LoadingState />;
   if (isError || !rule) return <ErrorState message="방어 룰을 찾지 못했습니다." />;
   const canValidate = ["draft", "review_required"].includes(rule.status);
   const aiConfigured = Boolean(aiQuery.data?.enabled && aiQuery.data.configured);
+  const elapsedMinutes = Math.floor(validationElapsedSeconds / 60);
+  const elapsedSeconds = String(validationElapsedSeconds % 60).padStart(2, "0");
 
   return (
     <div className="space-y-7">
@@ -110,10 +127,10 @@ export function RuleDetailPage() {
             >
               <FlaskConical className={`size-4 ${validation.isPending ? "animate-pulse" : ""}`} />
               {validation.isPending
-                ? "검증 실행 중..."
+                ? "우회·오탐 검증 중"
                 : aiConfigured
-                  ? "AI 우회 검증 시작"
-                  : "우회 검증 시작"}
+                  ? "AI 우회·오탐 검증 시작"
+                  : "우회·오탐 검증 시작"}
               <ArrowRight className="size-4" />
             </button>
             <StatusBadge status={rule.status} />
@@ -121,6 +138,48 @@ export function RuleDetailPage() {
         }
       />
       {validation.isError && <ErrorState message={validation.error.message} />}
+      {validation.isPending && (
+        <section
+          aria-live="polite"
+          className="overflow-hidden rounded-xl border border-[#5865f2]/35 bg-[#5865f2]/10"
+        >
+          <div className="h-1 w-full overflow-hidden bg-white/[0.05]">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-[#5865f2] to-[#60a5fa]" />
+          </div>
+          <div className="flex flex-col gap-5 p-5 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-[#5865f2] text-white">
+                <FlaskConical className="size-5 animate-pulse" />
+              </span>
+              <div>
+                <h2 className="text-base font-bold text-white">방어 룰을 검증하고 있습니다</h2>
+                <p className="mt-1 text-sm leading-6 text-[#b5bac1]">
+                  AI 응답과 반복 횟수에 따라 수 분 걸릴 수 있습니다. 완료되면 검증 결과 화면으로
+                  자동 이동합니다.
+                </p>
+              </div>
+              <span className="font-mono text-sm font-semibold text-[#c9cdfb] sm:ml-auto">
+                {elapsedMinutes}:{elapsedSeconds}
+              </span>
+            </div>
+            <div className="grid gap-2 text-xs text-[#b5bac1] sm:grid-cols-3">
+              {["우회 공격 변형 생성", "룰 보강 및 정상 요청 확인", "Holdout 최종 평가·리포트"].map(
+                (step, index) => (
+                  <div
+                    key={step}
+                    className="flex items-center gap-2 rounded-md border border-white/[0.07] bg-black/10 px-3 py-3"
+                  >
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/[0.08] font-mono text-[10px] text-[#c9cdfb]">
+                      {index + 1}
+                    </span>
+                    {step}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </section>
+      )}
       <div
         className={`rounded-md border p-4 text-xs ${aiConfigured ? "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-200" : "border-amber-400/20 bg-amber-400/[0.06] text-amber-200"}`}
       >

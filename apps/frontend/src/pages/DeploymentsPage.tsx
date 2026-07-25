@@ -187,7 +187,7 @@ export function DeploymentsPage() {
   const canDeployToLocalWaf = protectedService?.slug === "demo-shop";
   const actionLabel = (
     {
-      holdout_passed: "모니터링 모드로 적용",
+      holdout_passed: "Shadow 모드로 배포",
       shadow_mode: "실제 차단 요청",
       approval_required: "실제 차단 승인",
       approved: "Active 차단 전환",
@@ -221,7 +221,7 @@ export function DeploymentsPage() {
       <PageHeader
         eyebrow="WAF delivery"
         title="방어 룰 배포 관리"
-        description="검증 통과 룰을 Shadow로 관찰하고, 관리자 승인 후 Nginx/ModSecurity의 Active 차단 룰로 전환합니다."
+        description="먼저 요청을 차단하지 않는 Shadow 모드로 적용해 탐지 결과를 확인한 뒤, 관리자 승인 후 실제 차단으로 전환합니다."
         actions={
           actionLabel ? (
             <button
@@ -240,7 +240,7 @@ export function DeploymentsPage() {
                 : deploymentBlocked
                   ? "외부 WAF 자동 배포 미지원"
                   : waitingForShadowVerification
-                    ? "Shadow 재검증 완료 대기"
+                    ? "Shadow 자동 재검증 중"
                     : actionLabel}
               <ArrowRight className="size-4" />
             </button>
@@ -279,7 +279,7 @@ export function DeploymentsPage() {
       </label>
 
       <ol className="grid gap-2 sm:grid-cols-4">
-        {["검증 통과", "Shadow 관찰", "관리자 승인", "Active 차단"].map((label, index) => {
+        {["검증 통과", "차단 없이 관찰", "관리자 승인", "실제 차단"].map((label, index) => {
           const step = index + 1;
           const done = step < activeStep;
           return (
@@ -314,8 +314,8 @@ export function DeploymentsPage() {
             </div>
             <h2 className="mt-3 text-2xl font-bold text-white">Nginx / ModSecurity</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b5bac1]">
-              Shadow에서는 탐지만 기록하고 요청을 막지 않습니다. 승인 후 Active로 전환하면 생성된
-              SecRule이 실제 공격 요청을 차단합니다.
+              Shadow 모드는 요청을 막지 않고 탐지 결과만 기록하며, 적용 직후 자동 재검증을
+              시작합니다. 결과를 확인하고 승인하면 생성된 SecRule이 실제 공격 요청을 차단합니다.
             </p>
           </div>
           <Link to={`/reports/${rule.id}`} className={buttonSecondary}>
