@@ -32,7 +32,7 @@ function activeStep(scan: SecurityScan) {
 const stageLabels: Record<SecurityScan["stage"], string> = {
   initial_scan: "초기 보안 진단",
   before_deployment: "배포 전 기준 진단",
-  shadow_verification: "모니터링 모드 재검증",
+  shadow_verification: "Shadow 자동 재검증",
   after_deployment: "배포 후 최종 진단",
   ad_hoc: "보안 재진단"
 };
