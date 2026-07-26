@@ -16,7 +16,7 @@
     "typecheck": "npm run typecheck -ws --if-present",
     "frontend:dev": "npm run dev -w @siheung/frontend",
     "backend:dev": "npm run dev -w @siheung/backend",
-    "prepare": "husky"
+    "prepare": "node scripts/prepare-husky.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
