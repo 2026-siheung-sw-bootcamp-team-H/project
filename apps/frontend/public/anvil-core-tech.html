@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ANVIL 핵심 기술 발표</title>
+    <style>
+      :root {
+        --bg: #090d16;
+        --panel: #111827;
+        --panel-2: #151d2d;
+        --card: #172033;
+        --line: #d9e2ff;
+        --muted: #9aa8c7;
+        --text: #f7f9ff;
+        --blue: #5b8cff;
+        --cyan: #41d5ff;
+        --orange: #ff9d43;
+        --green: #43d17a;
+        --purple: #a78bfa;
+        --danger: #ff5f6d;
+        --border: rgba(255, 255, 255, 0.13);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at 20% 0%, rgba(91, 140, 255, 0.22), transparent 30%),
+          radial-gradient(circle at 85% 18%, rgba(167, 139, 250, 0.16), transparent 34%), var(--bg);
+        color: var(--text);
+        font-family:
+          Pretendard,
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        padding: 34px;
+      }
+
+      .deck {
+        display: grid;
+        gap: 38px;
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+
+      .slide {
+        width: 1280px;
+        min-height: 720px;
+        position: relative;
+        overflow: hidden;
+        padding: 46px 56px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 34px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)), #0c1220;
+        box-shadow: 0 30px 100px rgba(0, 0, 0, 0.42);
+      }
+
+      .slide::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        background-size: 34px 34px;
+        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 78%);
+      }
+
+      .slide > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border: 1px solid rgba(91, 140, 255, 0.45);
+        border-radius: 999px;
+        color: #b9c9ff;
+        background: rgba(91, 140, 255, 0.12);
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        margin-top: 22px;
+        font-size: 76px;
+        line-height: 1.04;
+        letter-spacing: -0.055em;
+      }
+
+      h2 {
+        margin-top: 16px;
+        font-size: 52px;
+        line-height: 1.08;
+        letter-spacing: -0.045em;
+      }
+
+      .lead {
+        margin-top: 22px;
+        max-width: 880px;
+        color: #cbd5ef;
+        font-size: 24px;
+        line-height: 1.55;
+        font-weight: 600;
+      }
+
+      .highlight {
+        color: var(--cyan);
+      }
+
+      .orange {
+        color: var(--orange);
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+        margin-top: 44px;
+      }
+
+      .feature-card {
+        min-height: 245px;
+        padding: 26px;
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+
+      .feature-card strong {
+        display: block;
+        margin-top: 22px;
+        font-size: 28px;
+        letter-spacing: -0.03em;
+      }
+
+      .feature-card span {
+        display: block;
+        margin-top: 13px;
+        color: #aeb9d3;
+        font-size: 18px;
+        line-height: 1.48;
+        font-weight: 600;
+      }
+
+      .icons {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 56px;
+      }
+
+      .icons img {
+        width: 58px;
+        height: 58px;
+        object-fit: contain;
+        padding: 8px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .architecture {
+        position: relative;
+        height: 545px;
+        margin-top: 26px;
+        border: 2px solid rgba(255, 157, 67, 0.82);
+        border-radius: 38px;
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .docker-area {
+        position: absolute;
+        inset: 54px 44px 34px 86px;
+        border: 2px solid rgba(91, 140, 255, 0.85);
+        border-radius: 32px;
+        background: rgba(91, 140, 255, 0.045);
+      }
+
+      .cloud-label,
+      .docker-label {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #dbe6ff;
+        font-size: 17px;
+        font-weight: 900;
+      }
+
+      .cloud-label {
+        top: -34px;
+        left: 34px;
+      }
+
+      .docker-label {
+        top: 18px;
+        left: 28px;
+      }
+
+      .cloud-label img,
+      .docker-label img {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+      }
+
+      .node {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 138px;
+        min-height: 104px;
+        padding: 13px 16px;
+        border: 2px dashed rgba(255, 255, 255, 0.42);
+        border-radius: 22px;
+        background: rgba(13, 19, 33, 0.94);
+        text-align: center;
+        box-shadow: 0 18px 38px rgba(0, 0, 0, 0.25);
+      }
+
+      .node img {
+        max-width: 122px;
+        max-height: 38px;
+        object-fit: contain;
+        margin-bottom: 8px;
+      }
+
+      .node .title {
+        font-size: 21px;
+        line-height: 1.15;
+        font-weight: 950;
+        letter-spacing: -0.035em;
+      }
+
+      .node .sub {
+        margin-top: 7px;
+        color: #aab6d1;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .user-node {
+        left: -26px;
+        top: 206px;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .admin-node {
+        left: -26px;
+        bottom: 48px;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .user-node img,
+      .admin-node img {
+        max-width: 88px;
+        max-height: 88px;
+        margin-bottom: 6px;
+      }
+
+      .waf-node {
+        left: 178px;
+        top: 135px;
+        width: 220px;
+        height: 142px;
+      }
+
+      .otel-node {
+        left: 493px;
+        top: 181px;
+        width: 164px;
+        height: 105px;
+      }
+
+      .shop-node {
+        right: 120px;
+        top: 138px;
+        width: 210px;
+        height: 125px;
+      }
+
+      .platform-node {
+        left: 475px;
+        bottom: 83px;
+        width: 292px;
+        height: 154px;
+      }
+
+      .platform-node .steps {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px 22px;
+        margin-top: 12px;
+        color: #c8d2ea;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .storage-node {
+        right: 98px;
+        bottom: 92px;
+        width: 205px;
+        height: 113px;
+      }
+
+      .queue-node {
+        left: 762px;
+        bottom: 24px;
+        width: 176px;
+        height: 78px;
+      }
+
+      .zap-node {
+        left: 248px;
+        bottom: 18px;
+        width: 146px;
+        height: 84px;
+      }
+
+      .ai-node {
+        right: -32px;
+        bottom: 230px;
+        width: 132px;
+        min-width: 132px;
+        min-height: 112px;
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+
+      .arrow {
+        position: absolute;
+        height: 3px;
+        background: var(--line);
+        border-radius: 999px;
+        transform-origin: left center;
+      }
+
+      .arrow::after {
+        content: "";
+        position: absolute;
+        right: -1px;
+        top: 50%;
+        width: 0;
+        height: 0;
+        border-top: 8px solid transparent;
+        border-bottom: 8px solid transparent;
+        border-left: 13px solid var(--line);
+        transform: translateY(-50%);
+      }
+
+      .arrow.both::before {
+        content: "";
+        position: absolute;
+        left: -1px;
+        top: 50%;
+        width: 0;
+        height: 0;
+        border-top: 8px solid transparent;
+        border-bottom: 8px solid transparent;
+        border-right: 13px solid var(--line);
+        transform: translateY(-50%);
+      }
+
+      .arrow-label {
+        position: absolute;
+        padding: 3px 8px;
+        border-radius: 8px;
+        color: #f9fbff;
+        background: #111827;
+        font-size: 15px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .a-user-waf {
+        left: 112px;
+        top: 263px;
+        width: 94px;
+      }
+
+      .a-waf-shop {
+        left: 395px;
+        top: 207px;
+        width: 455px;
+      }
+
+      .a-waf-log {
+        left: 397px;
+        top: 251px;
+        width: 116px;
+      }
+
+      .a-otel-platform {
+        left: 575px;
+        top: 289px;
+        width: 99px;
+        transform: rotate(90deg);
+      }
+
+      .a-shop-platform {
+        left: 716px;
+        top: 366px;
+        width: 212px;
+        transform: rotate(180deg);
+      }
+
+      .a-platform-storage {
+        left: 760px;
+        top: 431px;
+        width: 95px;
+      }
+
+      .a-platform-storage.both::after {
+        right: -1px;
+      }
+
+      .a-platform-queue {
+        left: 676px;
+        top: 495px;
+        width: 96px;
+        transform: rotate(90deg);
+      }
+
+      .a-platform-zap {
+        left: 358px;
+        top: 526px;
+        width: 154px;
+        transform: rotate(180deg);
+      }
+
+      .a-zap-waf {
+        left: 292px;
+        top: 452px;
+        width: 150px;
+        transform: rotate(-90deg);
+      }
+
+      .a-platform-waf {
+        left: 385px;
+        top: 366px;
+        width: 170px;
+        transform: rotate(-38deg);
+      }
+
+      .a-admin-platform {
+        left: 114px;
+        top: 418px;
+        width: 372px;
+      }
+
+      .a-platform-ai {
+        left: 746px;
+        top: 424px;
+        width: 362px;
+      }
+
+      .tech-layout {
+        display: grid;
+        grid-template-columns: 0.92fr 1.08fr;
+        gap: 34px;
+        margin-top: 34px;
+      }
+
+      .dark-card {
+        padding: 28px;
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.055);
+      }
+
+      .dark-card h3 {
+        font-size: 30px;
+        letter-spacing: -0.04em;
+      }
+
+      .dark-card p {
+        margin-top: 14px;
+        color: #b7c2dc;
+        font-size: 19px;
+        line-height: 1.55;
+        font-weight: 650;
+      }
+
+      .flow {
+        display: grid;
+        gap: 14px;
+      }
+
+      .flow-row {
+        display: grid;
+        grid-template-columns: 190px 42px 1fr;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .pill {
+        padding: 13px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #f8fbff;
+        font-size: 18px;
+        font-weight: 950;
+        text-align: center;
+      }
+
+      .mini-arrow {
+        color: var(--cyan);
+        font-size: 30px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .code-box {
+        margin-top: 20px;
+        padding: 22px;
+        border: 1px solid rgba(65, 213, 255, 0.25);
+        border-radius: 22px;
+        background: #07101c;
+        color: #d7f3ff;
+        font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+        font-size: 16px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 22px;
+      }
+
+      .metric {
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .metric b {
+        display: block;
+        font-size: 30px;
+        color: var(--green);
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 6px;
+        color: #b4bfd8;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .pipeline {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .pipe-step {
+        min-height: 142px;
+        padding: 18px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.065);
+        text-align: center;
+      }
+
+      .pipe-step .num {
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+        border-radius: 50%;
+        background: rgba(91, 140, 255, 0.28);
+        color: #dbe6ff;
+        font-size: 15px;
+        font-weight: 950;
+      }
+
+      .pipe-step strong {
+        display: block;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+      }
+
+      .pipe-step span {
+        display: block;
+        margin-top: 10px;
+        color: #aebad5;
+        font-size: 14px;
+        line-height: 1.42;
+        font-weight: 700;
+      }
+
+      .comparison {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 22px;
+        margin-top: 30px;
+      }
+
+      .request-box {
+        padding: 22px;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .request-box h3 {
+        font-size: 24px;
+        color: #f8fbff;
+      }
+
+      .request-box pre {
+        margin: 16px 0 0;
+        color: #d8e3ff;
+        font-size: 16px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+
+      .good {
+        border-color: rgba(67, 209, 122, 0.42);
+      }
+
+      .bad {
+        border-color: rgba(255, 95, 109, 0.42);
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .badge {
+        padding: 9px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        color: #dfe7fb;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .footer-note {
+        position: absolute;
+        left: 56px;
+        right: 56px;
+        bottom: 28px;
+        display: flex;
+        justify-content: space-between;
+        color: #7f8baa;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      @media print {
+        body {
+          padding: 0;
+          background: white;
+        }
+
+        .deck {
+          gap: 0;
+        }
+
+        .slide {
+          width: 100vw;
+          min-height: 100vh;
+          page-break-after: always;
+          border-radius: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck">
+      <section class="slide">
+        <div class="eyebrow">ANVIL CORE TECHNOLOGY</div>
+        <h1>
+          엔빌은 어떻게<br />
+          <span class="highlight">공격을 룰로 바꿀까?</span>
+        </h1>
+        <p class="lead">
+          웹 공격 요청을 먼저 관문에서 수집하고, 정규화와 검증 과정을 거친 뒤 실제 WAF에 배포 가능한
+          방어 시그니처로 전환합니다.
+        </p>
+
+        <div class="grid-3">
+          <div class="feature-card">
+            <div class="icons">
+              <img src="/ngninx.png" alt="Nginx" />
+              <img src="/mod.png" alt="ModSecurity" />
+              <img src="/crs.png" alt="OWASP CRS" />
+            </div>
+            <strong>1. WAF 관문</strong>
+            <span>Nginx, ModSecurity, OWASP CRS가 요청을 먼저 검사하고 로그를 남깁니다.</span>
+          </div>
+          <div class="feature-card">
+            <div class="icons">
+              <img src="/OpenTelemetry.png" alt="OpenTelemetry" />
+              <img src="/express.png" alt="Express" />
+            </div>
+            <strong>2. 분석 파이프라인</strong>
+            <span>수집된 로그를 정규화하고 탐지하여 새 방어 룰 후보를 생성합니다.</span>
+          </div>
+          <div class="feature-card">
+            <div class="icons">
+              <img src="/owasp.png" alt="OWASP ZAP" />
+              <img src="/gpt.png" alt="OpenAI" />
+            </div>
+            <strong>3. 검증과 설명</strong>
+            <span>ZAP 테스트와 AI 리포트를 통해 안전한 룰만 관리자 승인 후 배포합니다.</span>
+          </div>
+        </div>
+
+        <div class="footer-note">
+          <span>Self-Evolving Web Defense Signature Platform</span>
+          <span>핵심 기술 2가지: WAF 수집/배포 · 정규화/검증 파이프라인</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">SYSTEM ARCHITECTURE</div>
+        <h2>전체 구조는 이렇게 흘러갑니다</h2>
+
+        <div class="architecture">
+          <div class="cloud-label"><img src="/gcp.png" alt="GCP" /> GCP</div>
+          <div class="docker-area">
+            <div class="docker-label"><img src="/docker.png" alt="Docker" /> Docker</div>
+          </div>
+
+          <div class="node user-node">
+            <img src="/client.png" alt="User" />
+            <div class="title">User / Attacker</div>
+            <div class="sub">정상·공격 요청</div>
+          </div>
+
+          <div class="node admin-node">
+            <img src="/frontend.png" alt="Admin" />
+            <div class="title">Admin</div>
+            <div class="sub">관리자 화면</div>
+          </div>
+
+          <div class="node waf-node">
+            <div class="icons">
+              <img src="/ngninx.png" alt="Nginx" />
+              <img src="/mod.png" alt="ModSecurity" />
+              <img src="/crs.png" alt="OWASP CRS" />
+            </div>
+            <div class="title">WAF Gateway</div>
+            <div class="sub">Nginx + ModSecurity + CRS</div>
+          </div>
+
+          <div class="node otel-node">
+            <img src="/OpenTelemetry.png" alt="OpenTelemetry" />
+            <div class="title">OTel Collector</div>
+            <div class="sub">WAF 로그 수집</div>
+          </div>
+
+          <div class="node shop-node">
+            <img src="/express.png" alt="Express" />
+            <div class="title">Demo Shop API</div>
+            <div class="sub">보호 대상 서비스</div>
+          </div>
+
+          <div class="node platform-node">
+            <img src="/express.png" alt="Express" />
+            <div class="title">Platform API / Worker</div>
+            <div class="steps">
+              <span>Log Collect</span>
+              <span>Normalize</span>
+              <span>Detect</span>
+              <span>Rule Generate</span>
+              <span>Validate</span>
+              <span>Rule Deploy</span>
+            </div>
+          </div>
+
+          <div class="node storage-node">
+            <div class="icons">
+              <img src="/db.png" alt="PostgreSQL" />
+              <img src="/OpenSearch.png" alt="OpenSearch" />
+            </div>
+            <div class="title">Storage / Search</div>
+            <div class="sub">데이터 저장 · 로그 검색</div>
+          </div>
+
+          <div class="node queue-node">
+            <div class="icons">
+              <img src="/redis.png" alt="Redis" />
+              <span style="font-size: 34px; font-weight: 950; color: #aab6d1">BullMQ</span>
+            </div>
+            <div class="sub">Async Job Queue</div>
+          </div>
+
+          <div class="node zap-node">
+            <img src="/owasp.png" alt="OWASP ZAP" />
+            <div class="title">OWASP ZAP</div>
+            <div class="sub">검증 공격 생성</div>
+          </div>
+
+          <div class="node ai-node">
+            <img src="/gpt.png" alt="OpenAI" />
+            <div class="title">OpenAI</div>
+            <div class="sub">리포트 · 룰 제안</div>
+          </div>
+
+          <div class="arrow a-user-waf"></div>
+          <div class="arrow-label" style="left: 122px; top: 234px">HTTP Request</div>
+
+          <div class="arrow a-waf-shop"></div>
+          <div class="arrow-label" style="left: 560px; top: 178px">Allowed Request</div>
+
+          <div class="arrow a-waf-log"></div>
+          <div class="arrow-label" style="left: 420px; top: 222px">WAF Log</div>
+
+          <div class="arrow a-otel-platform"></div>
+          <div class="arrow a-shop-platform"></div>
+          <div class="arrow-label" style="left: 805px; top: 334px">Service Event</div>
+
+          <div class="arrow both a-platform-storage"></div>
+          <div class="arrow-label" style="left: 773px; top: 399px">Read / Write</div>
+
+          <div class="arrow both a-platform-queue"></div>
+          <div class="arrow-label" style="left: 800px; top: 487px">Async Job</div>
+
+          <div class="arrow a-platform-zap"></div>
+          <div class="arrow-label" style="left: 404px; top: 497px">Validation Start</div>
+
+          <div class="arrow a-zap-waf"></div>
+          <div class="arrow-label" style="left: 286px; top: 370px; transform: rotate(-90deg)">
+            Test Attack
+          </div>
+
+          <div class="arrow a-platform-waf"></div>
+          <div class="arrow-label" style="left: 418px; top: 320px; transform: rotate(-38deg)">
+            Rule Deploy
+          </div>
+
+          <div class="arrow a-admin-platform"></div>
+          <div class="arrow-label" style="left: 315px; top: 390px">REST API / SSE</div>
+
+          <div class="arrow both a-platform-ai"></div>
+          <div class="arrow-label" style="left: 822px; top: 392px">AI Report / Rule Suggestion</div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">CORE TECH 01</div>
+        <h2>WAF 기반 요청 수집과 방어 룰 배포</h2>
+        <p class="lead">
+          엔빌의 첫 번째 핵심은 서비스 앞단에 보안 관문을 세우고, 실제 요청 흐름에서 차단 로그와
+          우회 로그를 확보하는 구조입니다.
+        </p>
+
+        <div class="tech-layout">
+          <div class="dark-card">
+            <h3>왜 WAF Gateway가 먼저인가?</h3>
+            <p>
+              공격은 애플리케이션 코드에 도달하기 전에 먼저 WAF를 통과합니다. 여기서 기존 CRS가 막은
+              요청과 통과한 의심 요청이 모두 분석 재료가 됩니다.
+            </p>
+            <div class="badge-row">
+              <span class="badge">Nginx</span>
+              <span class="badge">ModSecurity</span>
+              <span class="badge">OWASP CRS</span>
+              <span class="badge">WAF Log</span>
+            </div>
+            <div class="code-box">
+              User Request → Nginx → ModSecurity Rule Check → OWASP CRS → Allow / Block / Log
+            </div>
+          </div>
+
+          <div class="flow">
+            <div class="flow-row">
+              <div class="pill">사용자 요청</div>
+              <div class="mini-arrow">→</div>
+              <div class="pill">WAF Gateway 진입</div>
+            </div>
+            <div class="flow-row">
+              <div class="pill">기본 룰 검사</div>
+              <div class="mini-arrow">→</div>
+              <div class="pill">OWASP CRS로 1차 차단</div>
+            </div>
+            <div class="flow-row">
+              <div class="pill">WAF 로그</div>
+              <div class="mini-arrow">→</div>
+              <div class="pill">OpenTelemetry로 수집</div>
+            </div>
+            <div class="flow-row">
+              <div class="pill">새 룰 승인</div>
+              <div class="mini-arrow">→</div>
+              <div class="pill">ModSecurity 룰로 배포</div>
+            </div>
+
+            <div class="metric-grid">
+              <div class="metric">
+                <b>1차</b>
+                <span>CRS 기반 기본 방어</span>
+              </div>
+              <div class="metric">
+                <b>수집</b>
+                <span>실제 WAF 로그 확보</span>
+              </div>
+              <div class="metric">
+                <b>배포</b>
+                <span>승인된 룰만 적용</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">CORE TECH 02</div>
+        <h2>정규화 + 검증 파이프라인</h2>
+        <p class="lead">
+          두 번째 핵심은 공격 문자열을 그대로 믿지 않고, 우회 표현을 같은 의미로 정리한 뒤 룰을
+          만들고 검증까지 반복하는 과정입니다.
+        </p>
+
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="num">1</div>
+            <strong>Normalize</strong>
+            <span>URL Decode, Unicode Normalize, Lowercase 등으로 우회 표현 정리</span>
+          </div>
+          <div class="pipe-step">
+            <div class="num">2</div>
+            <strong>Detect</strong>
+            <span>정규화된 요청에서 SQLi, XSS 등 공격 의심 패턴 탐지</span>
+          </div>
+          <div class="pipe-step">
+            <div class="num">3</div>
+            <strong>Rule Generate</strong>
+            <span>단순 정규식이 아니라 조건 트리 기반 시그니처 룰 생성</span>
+          </div>
+          <div class="pipe-step">
+            <div class="num">4</div>
+            <strong>Validate</strong>
+            <span>Sandbox, Holdout, OWASP ZAP으로 차단률과 오탐률 검증</span>
+          </div>
+          <div class="pipe-step">
+            <div class="num">5</div>
+            <strong>AI Report</strong>
+            <span>공격 의도와 룰 개선 방향을 관리자에게 설명</span>
+          </div>
+          <div class="pipe-step">
+            <div class="num">6</div>
+            <strong>Deploy</strong>
+            <span>승인된 룰만 WAF에 적용하고 배포 이력 관리</span>
+          </div>
+        </div>
+
+        <div class="comparison">
+          <div class="request-box bad">
+            <h3>우회 공격 입력</h3>
+            <pre>
+GET /search?q=un%69on/**/sel%65ct
+Host: demo-shop.local</pre
+            >
+          </div>
+          <div class="request-box good">
+            <h3>정규화 후 의미</h3>
+            <pre>
+query tokens:
+["union", "select"]
+
+category: SQL_INJECTION
+action: rule candidate</pre
+            >
+          </div>
+        </div>
+
+        <div class="footer-note">
+          <span>Redis + BullMQ: 검증·AI 리포트처럼 오래 걸리는 작업을 비동기로 처리</span>
+          <span>OpenSearch: 많은 로그 중 공격 흐름을 빠르게 검색</span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

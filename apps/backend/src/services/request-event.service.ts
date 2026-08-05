@@ -22,6 +22,7 @@ import { sanitizeRequest, type SanitizedSnapshot } from "./sanitizer.service.js"
 import { evaluateSignature } from "./signature-detector.service.js";
 import { buildRuleDefinition } from "./rule-generator.service.js";
 import { enqueueSearchOutbox } from "./search-index.service.js";
+import type { WafRuleMatch } from "./modsecurity-audit.service.js";
 
 type CaptureOptions = {
   responseStatus?: number;
@@ -30,6 +31,7 @@ type CaptureOptions = {
   protectedServiceId?: string;
   source?: RequestEventSource;
   simulationId?: string;
+  wafRuleMatches?: WafRuleMatch[];
 };
 
 function inferCategory(normalized: ReturnType<typeof normalizePayload>): AttackCategory | null {
@@ -130,8 +132,72 @@ export async function captureSnapshot(
   const matchedRules = evaluatedRules.filter(({ result }) => result.matched);
   const blockingRules = matchedRules.filter(({ rule }) => rule.status === RuleStatus.ACTIVE);
   const monitoringRules = matchedRules.filter(({ rule }) => rule.status !== RuleStatus.ACTIVE);
-  const blocked = blockingRules.length > 0;
+  const internallyBlocked = blockingRules.length > 0;
+  const wafBlocked = options.responseStatus === 403;
+  const blocked = internallyBlocked || wafBlocked;
+  const wafRuleMatches = options.wafRuleMatches ?? [];
   const expiresAt = new Date(Date.now() + env.safeReplayRetentionHours * 60 * 60 * 1000);
+  const internalEnforcement = {
+    ruleVersionId: (blockingRules[0] ?? monitoringRules[0])?.version.id,
+    externalRuleId: (blockingRules[0] ?? monitoringRules[0])?.rule.externalId,
+    ruleMessage: null,
+    ruleTags:
+      blockingRules.length > 0 || monitoringRules.length > 0 ? ["anvil-internal-signature"] : [],
+    action: internallyBlocked
+      ? EnforcementAction.BLOCK
+      : monitoringRules.length > 0
+        ? EnforcementAction.MONITOR
+        : EnforcementAction.ALLOW,
+    source:
+      internallyBlocked || monitoringRules.length > 0
+        ? EnforcementSource.INTERNAL_RULE
+        : EnforcementSource.NONE,
+    reason: internallyBlocked
+      ? `active rules: ${blockingRules.map(({ rule }) => rule.externalId).join(", ")}`
+      : monitoringRules.length > 0
+        ? `shadow rules: ${monitoringRules.map(({ rule }) => rule.externalId).join(", ")}`
+        : null
+  };
+  const wafEnforcements: Array<{
+    externalRuleId: string | null;
+    ruleMessage: string | null;
+    ruleTags: string[];
+    action: EnforcementAction;
+    source: EnforcementSource;
+    reason: string | null;
+  }> = wafRuleMatches.map((match) => {
+    const isAnvilSignature = match.tags.some((tag) =>
+      ["siheung-signature", "anvil"].some((marker) => tag.toLowerCase().includes(marker))
+    );
+    const matchedAnvilRule = isAnvilSignature
+      ? deployedRules.find((rule) => match.message?.includes(rule.externalId))
+      : undefined;
+
+    return {
+      externalRuleId: match.ruleId,
+      ruleMessage: match.message,
+      ruleTags: match.tags,
+      action: matchedAnvilRule
+        ? matchedAnvilRule.status === RuleStatus.ACTIVE
+          ? EnforcementAction.BLOCK
+          : EnforcementAction.MONITOR
+        : wafBlocked
+          ? EnforcementAction.BLOCK
+          : EnforcementAction.MONITOR,
+      source: EnforcementSource.MODSECURITY,
+      reason: match.message
+    };
+  });
+  if (wafBlocked && wafEnforcements.length === 0) {
+    wafEnforcements.push({
+      externalRuleId: null,
+      ruleMessage: "ModSecurity returned HTTP 403",
+      ruleTags: [],
+      action: EnforcementAction.BLOCK,
+      source: EnforcementSource.MODSECURITY,
+      reason: "ModSecurity returned HTTP 403"
+    });
+  }
 
   const event = await prisma.requestEvent.create({
     data: {
@@ -144,7 +210,7 @@ export async function captureSnapshot(
       bodySize: snapshot.bodySize,
       ipFingerprint: snapshot.ipFingerprint,
       userAgent: options.userAgent,
-      responseStatus: blocked ? 403 : options.responseStatus,
+      responseStatus: internallyBlocked ? 403 : options.responseStatus,
       source: options.source ?? RequestEventSource.REAL,
       simulationId: options.simulationId,
       sanitizedRequest: {
@@ -198,23 +264,7 @@ export async function captureSnapshot(
         ]
       },
       enforcements: {
-        create: {
-          ruleVersionId: (blockingRules[0] ?? monitoringRules[0])?.version.id,
-          action: blocked
-            ? EnforcementAction.BLOCK
-            : monitoringRules.length > 0
-              ? EnforcementAction.MONITOR
-              : EnforcementAction.ALLOW,
-          source:
-            blocked || monitoringRules.length > 0
-              ? EnforcementSource.INTERNAL_RULE
-              : EnforcementSource.NONE,
-          reason: blocked
-            ? `active rules: ${blockingRules.map(({ rule }) => rule.externalId).join(", ")}`
-            : monitoringRules.length > 0
-              ? `shadow rules: ${monitoringRules.map(({ rule }) => rule.externalId).join(", ")}`
-              : null
-        }
+        create: [internalEnforcement, ...wafEnforcements]
       },
       searchOutbox: {
         create: {}

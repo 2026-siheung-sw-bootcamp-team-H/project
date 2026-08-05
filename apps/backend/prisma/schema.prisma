@@ -252,6 +252,9 @@ model EnforcementResult {
   requestEvent   RequestEvent          @relation(fields: [requestEventId], references: [id], onDelete: Cascade)
   ruleVersionId  String?
   ruleVersion    SignatureRuleVersion? @relation(fields: [ruleVersionId], references: [id], onDelete: SetNull)
+  externalRuleId String?
+  ruleMessage    String?
+  ruleTags       String[]              @default([])
   action         EnforcementAction
   source         EnforcementSource
   reason         String?
@@ -259,6 +262,7 @@ model EnforcementResult {
 
   @@index([requestEventId, createdAt])
   @@index([action, createdAt])
+  @@index([externalRuleId])
 }
 
 model SignatureRule {

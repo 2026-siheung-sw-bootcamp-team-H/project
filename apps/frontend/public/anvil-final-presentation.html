@@ -1,0 +1,940 @@
+﻿<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ANVIL Final Architecture</title>
+    <style>
+      :root {
+        --ink: #111827;
+        --muted: #64748b;
+        --line: #111827;
+        --blue: #4f83ff;
+        --orange: #f97316;
+        --green: #16a34a;
+        --purple: #7c3aed;
+        --paper: #f8fafc;
+        --card: #ffffff;
+        --soft-blue: #eef5ff;
+        --soft-orange: #fff7ed;
+        --soft-green: #f0fdf4;
+        --shadow: 0 18px 45px rgb(15 23 42 / 10%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #e8edf5;
+        color: var(--ink);
+        font-family: Pretendard, "Noto Sans KR", "Malgun Gothic", Arial, sans-serif;
+      }
+
+      .deck {
+        width: 1280px;
+        margin: 0 auto;
+        padding: 28px 0 60px;
+      }
+
+      .slide {
+        position: relative;
+        width: 1280px;
+        height: 720px;
+        margin: 0 0 36px;
+        overflow: hidden;
+        border-radius: 28px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fbff 56%, #eef5ff 100%);
+        box-shadow: var(--shadow);
+      }
+
+      .slide-header {
+        position: absolute;
+        left: 54px;
+        top: 36px;
+        z-index: 5;
+      }
+
+      .kicker {
+        margin-bottom: 8px;
+        color: #2563eb;
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        color: #0f172a;
+        letter-spacing: -0.05em;
+      }
+
+      h1 {
+        font-size: 44px;
+        line-height: 1.05;
+      }
+
+      h2 {
+        font-size: 38px;
+        line-height: 1.12;
+      }
+
+      .subtitle {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .canvas {
+        position: absolute;
+        left: 50px;
+        top: 124px;
+        width: 1180px;
+        height: 540px;
+      }
+
+      .cloud-boundary,
+      .docker-boundary,
+      .zone {
+        position: absolute;
+        border-radius: 36px;
+        pointer-events: none;
+      }
+
+      .cloud-boundary {
+        left: 144px;
+        top: 22px;
+        width: 925px;
+        height: 478px;
+        border: 2px solid var(--orange);
+      }
+
+      .docker-boundary {
+        left: 174px;
+        top: 56px;
+        width: 860px;
+        height: 398px;
+        border: 2px solid #7aa7ff;
+      }
+
+      .boundary-label {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #475569;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .boundary-label img {
+        max-width: 42px;
+        max-height: 34px;
+        object-fit: contain;
+      }
+
+      .gcp-label {
+        left: 160px;
+        top: -8px;
+      }
+
+      .docker-label {
+        left: 198px;
+        top: 42px;
+      }
+
+      .node {
+        position: absolute;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed #1f2937;
+        border-radius: 22px;
+        background: rgb(255 255 255 / 92%);
+        text-align: center;
+      }
+
+      .node.clean {
+        border-style: solid;
+        border-color: #d8e0ec;
+        box-shadow: 0 12px 30px rgb(15 23 42 / 8%);
+      }
+
+      .node img,
+      .logo-row img,
+      .pipeline-logo {
+        object-fit: contain;
+      }
+
+      .node-title {
+        margin-top: 6px;
+        font-size: 20px;
+        font-weight: 950;
+        letter-spacing: -0.03em;
+      }
+
+      .node-subtitle {
+        margin-top: 6px;
+        color: #667085;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .logo-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+      }
+
+      .logo-row img {
+        max-height: 36px;
+        max-width: 72px;
+      }
+
+      .client {
+        left: 0;
+        top: 184px;
+        width: 112px;
+        height: 126px;
+        border: 0;
+        background: transparent;
+      }
+
+      .client img,
+      .admin img {
+        width: 84px;
+      }
+
+      .admin {
+        left: 0;
+        top: 384px;
+        width: 112px;
+        height: 126px;
+        border: 0;
+        background: transparent;
+      }
+
+      .waf {
+        left: 226px;
+        top: 130px;
+        width: 202px;
+        height: 132px;
+      }
+
+      .otel {
+        left: 488px;
+        top: 154px;
+        width: 158px;
+        height: 92px;
+      }
+
+      .otel img {
+        width: 112px;
+      }
+
+      .shop {
+        left: 822px;
+        top: 116px;
+        width: 186px;
+        height: 122px;
+      }
+
+      .api {
+        left: 538px;
+        top: 314px;
+        width: 252px;
+        height: 166px;
+      }
+
+      .api img,
+      .shop img {
+        width: 118px;
+        opacity: 0.55;
+      }
+
+      .api-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 18px;
+        margin-top: 14px;
+        color: #475569;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .storage {
+        left: 864px;
+        top: 328px;
+        width: 180px;
+        height: 112px;
+      }
+
+      .storage .logo-row img {
+        max-height: 32px;
+      }
+
+      .queue {
+        left: 626px;
+        top: 496px;
+        width: 160px;
+        height: 78px;
+      }
+
+      .queue img {
+        width: 64px;
+      }
+
+      .ai {
+        left: 1086px;
+        top: 330px;
+        width: 98px;
+        height: 98px;
+      }
+
+      .ai img {
+        width: 66px;
+      }
+
+      .zap {
+        left: 306px;
+        top: 468px;
+        width: 166px;
+        height: 84px;
+        flex-direction: row;
+        gap: 8px;
+        border: 0;
+        background: transparent;
+      }
+
+      .zap img {
+        width: 62px;
+      }
+
+      .zap strong {
+        display: block;
+        font-size: 19px;
+      }
+
+      .zap span {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      svg.arrows {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        overflow: visible;
+      }
+
+      .arrow {
+        fill: none;
+        stroke: #111827;
+        stroke-width: 3.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        marker-end: url(#arrow);
+      }
+
+      .arrow.both {
+        marker-start: url(#arrow-start);
+        marker-end: url(#arrow);
+      }
+
+      .arrow.green {
+        stroke: var(--green);
+      }
+
+      .arrow.purple {
+        stroke: var(--purple);
+      }
+
+      .arrow.orange {
+        stroke: var(--orange);
+      }
+
+      .label {
+        position: absolute;
+        z-index: 4;
+        padding: 3px 7px;
+        border-radius: 8px;
+        background: rgb(248 250 252 / 92%);
+        color: #475569;
+        font-size: 14px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .section-tag {
+        position: absolute;
+        z-index: 6;
+        padding: 9px 15px;
+        border-radius: 999px;
+        background: #0f172a;
+        color: white;
+        font-size: 16px;
+        font-weight: 950;
+      }
+
+      .tag-waf {
+        left: 188px;
+        top: 86px;
+      }
+
+      .tag-core {
+        left: 478px;
+        top: 276px;
+      }
+
+      .tech-layout {
+        position: absolute;
+        left: 60px;
+        top: 132px;
+        width: 1160px;
+        height: 515px;
+      }
+
+      .flow-card {
+        position: absolute;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 170px;
+        height: 124px;
+        padding: 14px;
+        border: 2px solid #d6e0ee;
+        border-radius: 24px;
+        background: white;
+        box-shadow: 0 12px 30px rgb(15 23 42 / 8%);
+        text-align: center;
+      }
+
+      .flow-card.small {
+        width: 145px;
+        height: 108px;
+      }
+
+      .flow-card img {
+        max-width: 100px;
+        max-height: 46px;
+        object-fit: contain;
+      }
+
+      .flow-card strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 18px;
+        line-height: 1.15;
+      }
+
+      .flow-card span {
+        display: block;
+        margin-top: 6px;
+        color: #667085;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .tech-note {
+        position: absolute;
+        left: 72px;
+        bottom: 34px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        width: 1136px;
+      }
+
+      .note-card {
+        padding: 16px 18px;
+        border: 1px solid #d9e4f2;
+        border-radius: 18px;
+        background: rgb(255 255 255 / 88%);
+      }
+
+      .note-card strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #0f172a;
+        font-size: 16px;
+      }
+
+      .note-card span {
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+
+      .pipeline {
+        position: absolute;
+        left: 58px;
+        top: 150px;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 12px;
+        width: 1164px;
+      }
+
+      .step {
+        min-height: 120px;
+        padding: 18px 14px;
+        border: 2px solid #dbeafe;
+        border-radius: 22px;
+        background: white;
+        text-align: center;
+        box-shadow: 0 12px 25px rgb(15 23 42 / 6%);
+      }
+
+      .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        margin-bottom: 10px;
+        border-radius: 999px;
+        background: #2563eb;
+        color: white;
+        font-size: 14px;
+        font-weight: 950;
+      }
+
+      .step strong {
+        display: block;
+        font-size: 17px;
+        line-height: 1.25;
+      }
+
+      .step span {
+        display: block;
+        margin-top: 7px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.45;
+      }
+
+      .pipeline-arrows {
+        position: absolute;
+        left: 58px;
+        top: 205px;
+        width: 1164px;
+        height: 60px;
+        pointer-events: none;
+      }
+
+      .sub-flow {
+        position: absolute;
+        left: 74px;
+        top: 330px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 18px;
+        width: 1130px;
+      }
+
+      .sub-box {
+        min-height: 150px;
+        padding: 20px 22px;
+        border: 2px dashed #cbd5e1;
+        border-radius: 24px;
+        background: rgb(255 255 255 / 84%);
+      }
+
+      .sub-box h3 {
+        margin: 0 0 12px;
+        font-size: 20px;
+      }
+
+      .sub-box p {
+        margin: 8px 0;
+        color: #475569;
+        font-size: 15px;
+        font-weight: 750;
+        line-height: 1.45;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .hint {
+        position: absolute;
+        right: 36px;
+        bottom: 20px;
+        color: #94a3b8;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      @media print {
+        body {
+          background: white;
+        }
+
+        .deck {
+          padding: 0;
+        }
+
+        .slide {
+          margin: 0;
+          border-radius: 0;
+          box-shadow: none;
+          page-break-after: always;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck">
+      <section class="slide" aria-label="시스템 아키텍처">
+        <div class="slide-header">
+          <div class="kicker">ANVIL ARCHITECTURE</div>
+          <h1>자가개선형 웹 방어<br />시그니처 플랫폼</h1>
+          <p class="subtitle">WAF 로그를 분석하고, 검증을 통과한 방어 룰만 배포하는 구조</p>
+        </div>
+
+        <div class="canvas">
+          <div class="cloud-boundary"></div>
+          <div class="docker-boundary"></div>
+          <div class="boundary-label gcp-label"><img src="/logo.png" alt="GCP" />GCP</div>
+          <div class="boundary-label docker-label">Docker</div>
+          <div class="section-tag tag-waf">1. WAF 수집 / 방어</div>
+          <div class="section-tag tag-core">2. 분석 / 자가개선 파이프라인</div>
+
+          <div class="node client">
+            <img src="/client.png" alt="User" />
+            <div class="node-title">User / Attacker</div>
+          </div>
+
+          <div class="node admin">
+            <img src="/frontend.png" alt="Admin" />
+            <div class="node-title">Admin</div>
+          </div>
+
+          <div class="node clean waf">
+            <div class="logo-row">
+              <img src="/ngninx.png" alt="Nginx" />
+              <img src="/mod.png" alt="ModSecurity" />
+              <img src="/crs.png" alt="OWASP CRS" />
+            </div>
+            <div class="node-title">WAF Gateway</div>
+            <div class="node-subtitle">Nginx + ModSecurity + CRS</div>
+          </div>
+
+          <div class="node clean otel">
+            <img src="/OpenTelemetry.png" alt="OpenTelemetry" />
+            <div class="node-title">OTel Collector</div>
+            <div class="node-subtitle">WAF 로그 수집</div>
+          </div>
+
+          <div class="node clean shop">
+            <img src="/express.png" alt="Express" />
+            <div class="node-title">Demo Shop API</div>
+            <div class="node-subtitle">보호 대상 서비스</div>
+          </div>
+
+          <div class="node clean api">
+            <img src="/express.png" alt="Express" />
+            <div class="node-title">Platform API / Worker</div>
+            <div class="api-grid">
+              <span>Log Collect</span><span>Normalize</span> <span>Detect</span
+              ><span>Rule Generate</span> <span>Validate</span><span>Rule Deploy</span>
+            </div>
+          </div>
+
+          <div class="node clean storage">
+            <div class="logo-row">
+              <img src="/db.png" alt="PostgreSQL" />
+              <img src="/OpenSearch.png" alt="OpenSearch" />
+            </div>
+            <div class="node-title">Storage / Search</div>
+            <div class="node-subtitle">규칙·이벤트 저장 / 로그 검색</div>
+          </div>
+
+          <div class="node clean queue">
+            <div class="logo-row"><img src="/redis.png" alt="Redis" /></div>
+            <div class="node-title">Redis + BullMQ</div>
+            <div class="node-subtitle">Queue / Cache</div>
+          </div>
+
+          <div class="node ai">
+            <img src="/gpt.png" alt="OpenAI" />
+          </div>
+
+          <div class="node zap">
+            <img src="/owasp.png" alt="OWASP ZAP" />
+            <div><strong>OWASP ZAP</strong><span>검증용 공격 트래픽</span></div>
+          </div>
+
+          <svg class="arrows" viewBox="0 0 1180 540" aria-hidden="true">
+            <defs>
+              <marker
+                id="arrow"
+                markerWidth="10"
+                markerHeight="10"
+                refX="8"
+                refY="3"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <path d="M0,0 L0,6 L8,3 z" fill="#111827" />
+              </marker>
+              <marker
+                id="arrow-start"
+                markerWidth="10"
+                markerHeight="10"
+                refX="2"
+                refY="3"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <path d="M8,0 L8,6 L0,3 z" fill="#111827" />
+              </marker>
+            </defs>
+            <path class="arrow" d="M118 247 H226" />
+            <path class="arrow" d="M428 188 H488" />
+            <path class="arrow" d="M646 188 H822" />
+            <path class="arrow" d="M586 246 V314" />
+            <path class="arrow" d="M908 238 V314 H790" />
+            <path class="arrow both" d="M790 383 H864" />
+            <path class="arrow both" d="M790 392 H1086" />
+            <path class="arrow both" d="M664 480 V496" />
+            <path class="arrow" d="M540 460 V510 H472" />
+            <path class="arrow" d="M350 468 V262" />
+            <path class="arrow green" d="M548 330 L428 232" />
+            <path class="arrow" d="M112 446 H538" />
+          </svg>
+          <span class="label" style="left: 668px; top: 172px">Allowed Request</span>
+          <span class="label" style="left: 672px; top: 366px">Read / Write</span>
+          <span class="label" style="left: 884px; top: 364px">AI Report / Rule Suggestion</span>
+          <span class="label" style="left: 662px; top: 506px">Queue / Cache</span>
+          <span class="label" style="left: 484px; top: 494px">Validation Start</span>
+          <span class="label" style="left: 354px; top: 357px; transform: rotate(-90deg)"
+            >Test Attack</span
+          >
+          <span class="label" style="left: 440px; top: 244px; transform: rotate(38deg)"
+            >Rule Deploy</span
+          >
+          <span class="label" style="left: 520px; top: 260px">WAF Log</span>
+        </div>
+        <div class="hint">발표 흐름: 전체 구조 → WAF 확대 → 파이프라인 확대</div>
+      </section>
+
+      <section class="slide" aria-label="핵심 기술 1 WAF">
+        <div class="slide-header">
+          <div class="kicker">CORE TECH 01</div>
+          <h2>WAF 기반 요청 수집과<br />방어 룰 배포</h2>
+          <p class="subtitle">Nginx, ModSecurity, OWASP CRS를 앞단 보안 관문으로 사용합니다.</p>
+        </div>
+
+        <div class="tech-layout">
+          <div class="flow-card" style="left: 20px; top: 114px">
+            <div>
+              <img src="/client.png" alt="User" /><strong>Request</strong
+              ><span>정상 / 공격 요청</span>
+            </div>
+          </div>
+          <div class="flow-card" style="left: 230px; top: 114px">
+            <div>
+              <img src="/ngninx.png" alt="Nginx" /><strong>Nginx</strong
+              ><span>Ingress / Proxy</span>
+            </div>
+          </div>
+          <div class="flow-card" style="left: 440px; top: 114px">
+            <div>
+              <img src="/mod.png" alt="ModSecurity" /><strong>ModSecurity</strong
+              ><span>WAF Engine</span>
+            </div>
+          </div>
+          <div class="flow-card" style="left: 650px; top: 114px">
+            <div>
+              <img src="/crs.png" alt="OWASP CRS" /><strong>OWASP CRS</strong
+              ><span>기본 공격 룰셋</span>
+            </div>
+          </div>
+          <div class="flow-card" style="left: 860px; top: 114px">
+            <div>
+              <img src="/express.png" alt="Express" /><strong>Demo Shop API</strong
+              ><span>보호 대상 서비스</span>
+            </div>
+          </div>
+
+          <div class="flow-card small" style="left: 452px; top: 330px">
+            <div>
+              <img src="/OpenTelemetry.png" alt="OTel" /><strong>OTel Collector</strong
+              ><span>WAF 로그 수집</span>
+            </div>
+          </div>
+          <div class="flow-card small" style="left: 680px; top: 330px">
+            <div>
+              <img src="/express.png" alt="Express" /><strong>Platform API</strong
+              ><span>로그 분석 / 룰 생성</span>
+            </div>
+          </div>
+
+          <svg class="arrows" viewBox="0 0 1160 515" aria-hidden="true">
+            <use href="#arrow-defs" />
+            <defs>
+              <marker
+                id="arrow2"
+                markerWidth="10"
+                markerHeight="10"
+                refX="8"
+                refY="3"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <path d="M0,0 L0,6 L8,3 z" fill="#111827" />
+              </marker>
+            </defs>
+            <path d="M190 176 H230" class="arrow" marker-end="url(#arrow2)" />
+            <path d="M400 176 H440" class="arrow" marker-end="url(#arrow2)" />
+            <path d="M610 176 H650" class="arrow" marker-end="url(#arrow2)" />
+            <path d="M820 176 H860" class="arrow" marker-end="url(#arrow2)" />
+            <path d="M540 238 V330" class="arrow orange" marker-end="url(#arrow2)" />
+            <path d="M598 384 H680" class="arrow orange" marker-end="url(#arrow2)" />
+            <path d="M720 330 V266 H520 V238" class="arrow green" marker-end="url(#arrow2)" />
+          </svg>
+          <span class="label" style="left: 311px; top: 150px">HTTP Request</span>
+          <span class="label" style="left: 708px; top: 150px">Allowed Request</span>
+          <span class="label" style="left: 484px; top: 275px">WAF Log</span>
+          <span class="label" style="left: 584px; top: 392px">Log Event</span>
+          <span class="label" style="left: 622px; top: 262px">Rule Deploy</span>
+        </div>
+
+        <div class="tech-note">
+          <div class="note-card">
+            <strong>1차 방어</strong
+            ><span>CRS가 알려진 SQLi, XSS 같은 공격을 먼저 차단합니다.</span>
+          </div>
+          <div class="note-card">
+            <strong>증거 수집</strong
+            ><span>차단·허용 로그를 수집해 어떤 패턴이 들어왔는지 추적합니다.</span>
+          </div>
+          <div class="note-card">
+            <strong>안전 배포</strong><span>검증을 통과한 커스텀 룰만 WAF에 반영합니다.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" aria-label="핵심 기술 2 정규화 검증 파이프라인">
+        <div class="slide-header">
+          <div class="kicker">CORE TECH 02</div>
+          <h2>정규화 + 검증 파이프라인</h2>
+          <p class="subtitle">
+            우회 공격을 같은 기준으로 변환하고, 실제 적용 전 탐지율과 오탐률을 확인합니다.
+          </p>
+        </div>
+
+        <div class="pipeline">
+          <div class="step">
+            <div class="step-num">1</div>
+            <strong>Raw Request</strong><span>WAF 로그와 요청 메타데이터 수집</span>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <strong>Normalize</strong><span>인코딩·대소문자·주석 변형 정리</span>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <strong>Detect</strong><span>토큰과 패턴으로 공격 의심 판단</span>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <strong>Rule Generate</strong><span>조건 트리 기반 시그니처 생성</span>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <strong>Validate</strong><span>Sandbox / Holdout / ZAP 검증</span>
+          </div>
+          <div class="step">
+            <div class="step-num">6</div>
+            <strong>AI Report</strong><span>공격 설명과 개선 방향 요약</span>
+          </div>
+          <div class="step">
+            <div class="step-num">7</div>
+            <strong>Deploy</strong><span>관리자 승인 후 WAF 반영</span>
+          </div>
+        </div>
+
+        <svg class="pipeline-arrows" viewBox="0 0 1164 60" aria-hidden="true">
+          <defs>
+            <marker
+              id="arrow3"
+              markerWidth="10"
+              markerHeight="10"
+              refX="8"
+              refY="3"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path d="M0,0 L0,6 L8,3 z" fill="#111827" />
+            </marker>
+          </defs>
+          <path d="M155 30 H170" class="arrow" marker-end="url(#arrow3)" />
+          <path d="M320 30 H335" class="arrow" marker-end="url(#arrow3)" />
+          <path d="M486 30 H501" class="arrow" marker-end="url(#arrow3)" />
+          <path d="M652 30 H667" class="arrow" marker-end="url(#arrow3)" />
+          <path d="M817 30 H832" class="arrow" marker-end="url(#arrow3)" />
+          <path d="M984 30 H999" class="arrow" marker-end="url(#arrow3)" />
+        </svg>
+
+        <div class="sub-flow">
+          <div class="sub-box">
+            <h3>정규화가 필요한 이유</h3>
+            <div class="chip-row">
+              <span class="chip">URL Decode</span>
+              <span class="chip">Unicode Normalize</span>
+              <span class="chip">Lowercase</span>
+              <span class="chip">Comment Strip</span>
+              <span class="chip">Token Analyze</span>
+            </div>
+            <p>공격자가 인코딩, 대소문자, 주석으로 우회해도 같은 의미의 요청으로 비교합니다.</p>
+          </div>
+
+          <div class="sub-box">
+            <h3>검증이 필요한 이유</h3>
+            <p>
+              <strong>Sandbox</strong>: 생성한 룰을 가상 환경에서 먼저 공격 요청으로 테스트합니다.
+            </p>
+            <p>
+              <strong>Holdout</strong>: 룰 생성에 쓰지 않은 정상/공격 샘플로 오탐률을 확인합니다.
+            </p>
+          </div>
+
+          <div class="sub-box">
+            <h3>비동기 처리 구조</h3>
+            <p>
+              Redis + BullMQ가 ZAP 검증, AI 리포트 생성 같은 오래 걸리는 작업을 큐로 분리합니다.
+            </p>
+            <p>OpenAI는 룰을 대신 배포하는 것이 아니라 공격 설명과 개선 제안을 제공합니다.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

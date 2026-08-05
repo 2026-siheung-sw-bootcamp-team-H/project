@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, FileCode2, RefreshCw, ScanSearch } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { EnforcementAttributionBadges } from "@/components/EnforcementAttributionBadges";
 import { ErrorState, LoadingState, PageHeader, StatusBadge } from "@/components/ui";
 import { buttonPrimary, buttonSecondary } from "@/lib/display";
 import { platformApi } from "@/services/platformApi";
@@ -169,6 +170,16 @@ export function LogDetailPage() {
                   </dd>
                 </div>
               </div>
+              {log.enforcementAttributions.length > 0 && (
+                <div className="border-t border-[#273244] pt-4">
+                  <dt className="font-mono text-[10px] uppercase tracking-wider text-[#64748b]">
+                    차단 주체
+                  </dt>
+                  <dd className="mt-2">
+                    <EnforcementAttributionBadges items={log.enforcementAttributions} />
+                  </dd>
+                </div>
+              )}
             </dl>
           </section>
         </aside>
