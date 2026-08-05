@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "../config/database.js";
 import { captureSnapshot } from "../services/request-event.service.js";
 import { fingerprint, sanitizeUnknown } from "../services/sanitizer.service.js";
+import { extractWafRuleMatches } from "../services/modsecurity-audit.service.js";
 import { createSuccessResponse } from "../utils/api-response.js";
 import { asJson } from "../utils/json.js";
 
@@ -123,6 +124,7 @@ export const ingestOtlpLogs: RequestHandler = async (request, response) => {
     const sanitizedBodyText = JSON.stringify(sanitizedBody);
     const method = typeof requestData.method === "string" ? requestData.method : "UNKNOWN";
     const eventId = String(transaction.unique_id ?? transaction.id ?? randomUUID());
+    const wafRuleMatches = extractWafRuleMatches(audit);
 
     await captureSnapshot(
       {
@@ -151,6 +153,7 @@ export const ingestOtlpLogs: RequestHandler = async (request, response) => {
         simulationId,
         responseStatus:
           typeof responseData.http_code === "number" ? responseData.http_code : undefined,
+        wafRuleMatches,
         contentType: "application/json",
         userAgent: "ModSecurity audit log"
       }

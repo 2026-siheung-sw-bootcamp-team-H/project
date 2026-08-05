@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Filter, Radio, RefreshCw, Search, ShieldCheck, Swords } from "lucide-react";
 import { Link } from "react-router-dom";
+import { EnforcementAttributionBadges } from "@/components/EnforcementAttributionBadges";
 import { EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from "@/components/ui";
 import { buttonPrimary, buttonSecondary, formatDate } from "@/lib/display";
 import { platformApi } from "@/services/platformApi";
@@ -222,11 +223,12 @@ export function LogsPage() {
           </div>
         </div>
 
-        <div className="hidden grid-cols-[116px_74px_minmax(280px,1fr)_130px_110px_92px_24px] gap-3 border-b border-[#273244] bg-[#0d1420] px-5 py-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#64748b] lg:grid">
+        <div className="hidden grid-cols-[108px_62px_minmax(210px,1fr)_112px_minmax(160px,200px)_94px_84px_20px] gap-3 border-b border-[#273244] bg-[#0d1420] px-5 py-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#64748b] lg:grid">
           <span>Timestamp</span>
           <span>Method</span>
           <span>Request</span>
           <span>Category</span>
+          <span>방어 주체</span>
           <span>Severity</span>
           <span>Action</span>
           <span />
@@ -239,7 +241,7 @@ export function LogsPage() {
               <Link
                 key={log.id}
                 to={`/logs/${log.id}`}
-                className={`security-table-row grid gap-3 border-l-2 px-5 py-3.5 lg:grid-cols-[116px_74px_minmax(280px,1fr)_130px_110px_92px_24px] lg:items-center ${severityBorder[log.classification]} ${generatedId === log.id ? "bg-[#ef4444]/[0.04]" : ""}`}
+                className={`security-table-row grid gap-3 border-l-2 px-5 py-3.5 lg:grid-cols-[108px_62px_minmax(210px,1fr)_112px_minmax(160px,200px)_94px_84px_20px] lg:items-center ${severityBorder[log.classification]} ${generatedId === log.id ? "bg-[#ef4444]/[0.04]" : ""}`}
               >
                 <span className="font-mono text-[10px] text-[#64748b]">
                   {formatDate(log.occurredAt)}
@@ -259,12 +261,19 @@ export function LogsPage() {
                     </span>
                   </div>
                   <p className="mt-1 truncate font-mono text-[10px] text-[#64748b]">
-                    {log.ip} · HTTP {log.statusCode || "—"}
+                    {log.ip} · HTTP {log.statusCode || "-"}
                   </p>
                 </div>
                 <span className="truncate font-mono text-[10px] text-[#9ca3af]">
                   {log.attackCategory?.replaceAll("_", " ") ?? "—"}
                 </span>
+                <div className="min-w-0">
+                  {log.enforcementAttributions.length > 0 ? (
+                    <EnforcementAttributionBadges items={log.enforcementAttributions} compact />
+                  ) : (
+                    <span className="font-mono text-[10px] text-[#475569]">—</span>
+                  )}
+                </div>
                 <StatusBadge status={log.classification} />
                 <StatusBadge status={log.action} />
                 <ArrowRight className="size-4 text-[#4b5563]" />

@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ANVIL 핵심 기술 발표 슬라이드</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #050814;
+        color: #f8fafc;
+        font-family:
+          Pretendard,
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .deck {
+        display: grid;
+        gap: 40px;
+        padding: 40px;
+      }
+
+      .slide {
+        position: relative;
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        border-radius: 28px;
+        background:
+          radial-gradient(circle at 90% 8%, rgba(96, 165, 250, 0.18), transparent 30%),
+          linear-gradient(135deg, #080d1c 0%, #101827 50%, #07111e 100%);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+      }
+
+      body.single-slide {
+        overflow: hidden;
+      }
+
+      body.single-slide .deck {
+        padding: 0;
+        gap: 0;
+      }
+
+      body.single-slide .slide {
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .slide::before {
+        content: "";
+        position: absolute;
+        inset: 28px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 24px;
+        pointer-events: none;
+      }
+
+      .label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: fit-content;
+        border: 1px solid rgba(96, 165, 250, 0.32);
+        border-radius: 999px;
+        padding: 8px 14px;
+        color: #93c5fd;
+        background: rgba(15, 23, 42, 0.86);
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .title {
+        margin: 18px 0 0;
+        font-size: 52px;
+        line-height: 1.12;
+        letter-spacing: -0.05em;
+      }
+
+      .subtitle {
+        margin: 18px 0 0;
+        color: #cbd5e1;
+        font-size: 22px;
+        line-height: 1.55;
+      }
+
+      .slide-inner {
+        position: relative;
+        z-index: 1;
+        height: 100%;
+        padding: 64px 72px;
+      }
+
+      .accent {
+        color: #60a5fa;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+        margin-top: 46px;
+      }
+
+      .card {
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 24px;
+        padding: 24px;
+        background: rgba(15, 23, 42, 0.7);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .card h3 {
+        margin: 14px 0 10px;
+        font-size: 24px;
+      }
+
+      .card p {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: 17px;
+        line-height: 1.45;
+      }
+
+      .logo-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 70px;
+      }
+
+      .logo-row img,
+      .tech-logo {
+        max-width: 112px;
+        max-height: 64px;
+        object-fit: contain;
+        filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25));
+      }
+
+      .architecture {
+        display: grid;
+        grid-template-columns: 130px 1fr 126px;
+        gap: 22px;
+        align-items: center;
+        height: 520px;
+        margin-top: 26px;
+      }
+
+      .actor {
+        display: grid;
+        place-items: center;
+        gap: 12px;
+        text-align: center;
+        color: #e5e7eb;
+        font-size: 17px;
+        font-weight: 900;
+      }
+
+      .actor img {
+        width: 88px;
+        height: 88px;
+        object-fit: contain;
+      }
+
+      .cloud-frame {
+        position: relative;
+        height: 510px;
+        border: 2px solid rgba(96, 165, 250, 0.7);
+        border-radius: 34px;
+        background: rgba(8, 13, 28, 0.72);
+      }
+
+      .cloud-frame::before {
+        content: "";
+        position: absolute;
+        inset: -22px;
+        border: 2px solid rgba(249, 115, 22, 0.8);
+        border-radius: 42px;
+        pointer-events: none;
+      }
+
+      .cloud-logo {
+        position: absolute;
+        top: -52px;
+        left: -18px;
+        width: 70px;
+      }
+
+      .docker-logo {
+        position: absolute;
+        top: -28px;
+        left: 54px;
+        width: 92px;
+      }
+
+      .node {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        min-width: 168px;
+        min-height: 112px;
+        border: 2px dashed rgba(203, 213, 225, 0.45);
+        border-radius: 22px;
+        padding: 14px;
+        background: rgba(15, 23, 42, 0.9);
+        text-align: center;
+      }
+
+      .node strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 18px;
+      }
+
+      .node span {
+        display: block;
+        margin-top: 4px;
+        color: #94a3b8;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .waf {
+        left: 58px;
+        top: 98px;
+        width: 220px;
+      }
+
+      .otel {
+        left: 370px;
+        top: 124px;
+        width: 170px;
+        min-height: 92px;
+      }
+
+      .shop {
+        right: 58px;
+        top: 82px;
+        width: 210px;
+      }
+
+      .platform {
+        left: 404px;
+        top: 268px;
+        width: 260px;
+        min-height: 168px;
+      }
+
+      .storage {
+        right: 88px;
+        top: 318px;
+        width: 214px;
+      }
+
+      .queue {
+        left: 690px;
+        top: 396px;
+        width: 170px;
+        min-height: 86px;
+      }
+
+      .zap {
+        left: 142px;
+        top: 380px;
+        width: 170px;
+        min-height: 92px;
+      }
+
+      .service-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 10px;
+        color: #cbd5e1;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .arrow {
+        position: absolute;
+        height: 3px;
+        background: #f8fafc;
+        border-radius: 99px;
+      }
+
+      .arrow::after {
+        content: "";
+        position: absolute;
+        right: -1px;
+        top: 50%;
+        width: 0;
+        height: 0;
+        border-top: 9px solid transparent;
+        border-bottom: 9px solid transparent;
+        border-left: 15px solid #f8fafc;
+        transform: translateY(-50%);
+      }
+
+      .arrow-label {
+        position: absolute;
+        padding: 4px 8px;
+        border-radius: 8px;
+        background: rgba(8, 13, 28, 0.94);
+        color: #e5e7eb;
+        font-size: 13px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .a-user-waf {
+        left: -114px;
+        top: 206px;
+        width: 152px;
+      }
+
+      .a-waf-shop {
+        left: 278px;
+        top: 164px;
+        width: 622px;
+      }
+
+      .a-waf-otel {
+        left: 278px;
+        top: 214px;
+        width: 116px;
+      }
+
+      .a-otel-platform {
+        left: 452px;
+        top: 224px;
+        width: 82px;
+        transform: rotate(90deg);
+        transform-origin: left center;
+      }
+
+      .a-platform-storage {
+        left: 666px;
+        top: 346px;
+        width: 178px;
+      }
+
+      .a-platform-queue {
+        left: 642px;
+        top: 420px;
+        width: 70px;
+      }
+
+      .a-platform-zap {
+        left: 278px;
+        top: 438px;
+        width: 150px;
+        transform: rotate(180deg);
+      }
+
+      .a-zap-waf {
+        left: 160px;
+        top: 338px;
+        width: 110px;
+        transform: rotate(-90deg);
+        transform-origin: left center;
+      }
+
+      .a-platform-openai {
+        right: -144px;
+        top: 278px;
+        width: 250px;
+      }
+
+      .a-deploy {
+        left: 280px;
+        top: 300px;
+        width: 154px;
+        transform: rotate(-142deg);
+      }
+
+      .openai-node {
+        display: grid;
+        place-items: center;
+        width: 112px;
+        height: 112px;
+        border: 2px dashed rgba(203, 213, 225, 0.45);
+        border-radius: 26px;
+        background: rgba(15, 23, 42, 0.9);
+      }
+
+      .openai-node img {
+        width: 72px;
+      }
+
+      .pipeline {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
+        margin-top: 42px;
+      }
+
+      .step {
+        position: relative;
+        min-height: 190px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 22px;
+        padding: 22px;
+        background: rgba(15, 23, 42, 0.74);
+      }
+
+      .step::after {
+        content: "→";
+        position: absolute;
+        top: 72px;
+        right: -18px;
+        color: #60a5fa;
+        font-size: 34px;
+        font-weight: 900;
+      }
+
+      .step:last-child::after {
+        display: none;
+      }
+
+      .step-number {
+        color: #60a5fa;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .step h3 {
+        margin: 12px 0 10px;
+        font-size: 23px;
+      }
+
+      .step p {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: 16px;
+        line-height: 1.45;
+      }
+
+      .code-box {
+        border: 1px solid rgba(96, 165, 250, 0.35);
+        border-radius: 20px;
+        padding: 20px;
+        background: #020617;
+        color: #dbeafe;
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 17px;
+        line-height: 1.7;
+      }
+
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-top: 34px;
+      }
+
+      .proof-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+        margin-top: 38px;
+      }
+
+      .proof {
+        min-height: 350px;
+        border: 2px dashed rgba(148, 163, 184, 0.32);
+        border-radius: 26px;
+        padding: 24px;
+        background: rgba(15, 23, 42, 0.68);
+      }
+
+      .proof h3 {
+        margin: 0 0 14px;
+        font-size: 25px;
+      }
+
+      .proof p {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: 18px;
+        line-height: 1.55;
+      }
+
+      .terminal {
+        margin-top: 20px;
+        border-radius: 18px;
+        padding: 18px;
+        background: #020617;
+        color: #bbf7d0;
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 6px 12px;
+        background: rgba(34, 197, 94, 0.16);
+        color: #86efac;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .muted {
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck">
+      <section class="slide" data-slide="1">
+        <div class="slide-inner">
+          <div class="label">ANVIL Core Technology</div>
+          <h1 class="title">공격 로그에서 <span class="accent">검증된 방어 룰</span>까지</h1>
+          <p class="subtitle">
+            ANVIL은 WAF 로그를 수집하고, 요청을 정규화한 뒤, 공격 패턴을 룰로 만들고 검증해 안전한
+            룰만 배포하는 자가개선형 웹 방어 플랫폼입니다.
+          </p>
+          <div class="grid-3">
+            <article class="card">
+              <div class="logo-row">
+                <img src="./ngninx.png" alt="Nginx" />
+                <img src="./mod.png" alt="ModSecurity" />
+                <img src="./crs.png" alt="OWASP CRS" />
+              </div>
+              <h3>WAF Gateway</h3>
+              <p>요청을 먼저 검사하고, 차단/허용 결과와 공격 로그를 남깁니다.</p>
+            </article>
+            <article class="card">
+              <div class="logo-row">
+                <img src="./express.png" alt="Express" />
+                <img src="./redis.png" alt="Redis" />
+              </div>
+              <h3>Analysis Pipeline</h3>
+              <p>로그 수집, 정규화, 탐지, 룰 생성, 검증 작업을 비동기로 처리합니다.</p>
+            </article>
+            <article class="card">
+              <div class="logo-row">
+                <img src="./owasp.png" alt="OWASP ZAP" />
+                <img src="./gpt.png" alt="OpenAI" />
+              </div>
+              <h3>Validation & Report</h3>
+              <p>ZAP 테스트와 AI 리포트로 룰의 차단 근거와 개선 방향을 설명합니다.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="2">
+        <div class="slide-inner">
+          <div class="label">System Architecture</div>
+          <h2 class="title" style="font-size: 40px">엔빌 시스템 아키텍처</h2>
+          <div class="architecture">
+            <div class="actor">
+              <img src="./client.png" alt="User" />
+              <div>User / Attacker</div>
+              <div style="height: 32px"></div>
+              <img src="./frontend.png" alt="Admin" />
+              <div>Admin</div>
+            </div>
+
+            <div class="cloud-frame">
+              <img class="cloud-logo" src="./gcp.png" alt="GCP" />
+              <img class="docker-logo" src="./docker.png" alt="Docker" />
+
+              <div class="node waf">
+                <div class="logo-row" style="justify-content: center; gap: 10px; min-height: 44px">
+                  <img src="./ngninx.png" alt="Nginx" style="width: 56px" />
+                  <img src="./mod.png" alt="ModSecurity" style="width: 66px" />
+                  <img src="./crs.png" alt="CRS" style="width: 48px" />
+                </div>
+                <strong>WAF Gateway</strong>
+                <span>Nginx + ModSecurity + CRS</span>
+              </div>
+
+              <div class="node otel">
+                <img src="./OpenTelemetry.png" alt="OpenTelemetry" class="tech-logo" />
+                <strong>OTel Collector</strong>
+                <span>WAF Log 수집</span>
+              </div>
+
+              <div class="node shop">
+                <img src="./express.png" alt="Express" class="tech-logo" />
+                <strong>Demo Shop API</strong>
+                <span>보호 대상 서비스</span>
+              </div>
+
+              <div class="node platform">
+                <img src="./express.png" alt="Express" class="tech-logo" />
+                <strong>Platform API / Worker</strong>
+                <div class="service-list">
+                  <div>Log Collect</div>
+                  <div>Normalize</div>
+                  <div>Detect</div>
+                  <div>Rule Generate</div>
+                  <div>Validate</div>
+                  <div>Rule Deploy</div>
+                </div>
+              </div>
+
+              <div class="node storage">
+                <div class="logo-row" style="justify-content: center">
+                  <img src="./db.png" alt="PostgreSQL" style="width: 58px" />
+                  <img src="./OpenSearch.png" alt="OpenSearch" style="width: 118px" />
+                </div>
+                <strong>Storage / Search</strong>
+                <span>룰 저장 · 로그 검색</span>
+              </div>
+
+              <div class="node queue">
+                <img src="./redis.png" alt="Redis" class="tech-logo" />
+                <strong>Async Job Queue</strong>
+                <span>Redis + BullMQ</span>
+              </div>
+
+              <div class="node zap">
+                <img src="./owasp.png" alt="OWASP ZAP" class="tech-logo" />
+                <strong>OWASP ZAP</strong>
+                <span>검증 공격 생성</span>
+              </div>
+
+              <div class="arrow a-user-waf"></div>
+              <div class="arrow-label" style="left: -86px; top: 178px">HTTP Request</div>
+
+              <div class="arrow a-waf-shop"></div>
+              <div class="arrow-label" style="left: 526px; top: 134px">Allowed Request</div>
+
+              <div class="arrow a-waf-otel"></div>
+              <div class="arrow-label" style="left: 316px; top: 186px">WAF Log</div>
+
+              <div class="arrow a-otel-platform"></div>
+              <div class="arrow a-platform-storage"></div>
+              <div class="arrow-label" style="left: 716px; top: 318px">Read / Write</div>
+
+              <div class="arrow a-platform-queue"></div>
+              <div class="arrow-label" style="left: 664px; top: 392px">Async Job</div>
+
+              <div class="arrow a-platform-zap"></div>
+              <div class="arrow-label" style="left: 270px; top: 408px">Validation Start</div>
+
+              <div class="arrow a-zap-waf"></div>
+              <div class="arrow-label" style="left: 142px; top: 292px">Test Attack</div>
+
+              <div class="arrow a-deploy"></div>
+              <div class="arrow-label" style="left: 286px; top: 266px; transform: rotate(-38deg)">
+                Rule Deploy
+              </div>
+
+              <div class="arrow a-platform-openai"></div>
+              <div class="arrow-label" style="right: -78px; top: 246px">
+                AI Report / Rule Suggestion
+              </div>
+            </div>
+
+            <div class="openai-node">
+              <img src="./gpt.png" alt="OpenAI" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="3">
+        <div class="slide-inner">
+          <div class="label">Core Tech 01</div>
+          <h2 class="title" style="font-size: 42px">WAF 기반 요청 수집과 방어 룰 배포</h2>
+          <p class="subtitle">
+            서비스 앞단에 WAF Gateway를 두고, 기존 CRS가 막지 못한 공격 로그를 분석해 새로운 방어
+            룰을 다시 배포합니다.
+          </p>
+          <div class="pipeline">
+            <div class="step">
+              <div class="step-number">01</div>
+              <h3>요청 진입</h3>
+              <p>사용자 또는 공격자의 요청이 먼저 WAF Gateway로 들어옵니다.</p>
+            </div>
+            <div class="step">
+              <div class="step-number">02</div>
+              <h3>기본 방어</h3>
+              <p>Nginx + ModSecurity + OWASP CRS가 알려진 공격을 우선 차단합니다.</p>
+            </div>
+            <div class="step">
+              <div class="step-number">03</div>
+              <h3>로그 수집</h3>
+              <p>차단/허용 결과와 의심 요청 로그를 OpenTelemetry로 수집합니다.</p>
+            </div>
+            <div class="step">
+              <div class="step-number">04</div>
+              <h3>룰 생성</h3>
+              <p>분석 파이프라인이 공격 특징을 조건 기반 시그니처 룰로 변환합니다.</p>
+            </div>
+            <div class="step">
+              <div class="step-number">05</div>
+              <h3>WAF 배포</h3>
+              <p>검증과 승인 후 살아남은 룰만 WAF에 적용합니다.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="4">
+        <div class="slide-inner">
+          <div class="label">Core Tech 02</div>
+          <h2 class="title" style="font-size: 42px">정규화 + 검증 파이프라인</h2>
+          <p class="subtitle">
+            공격자는 인코딩, 대소문자, 주석 삽입으로 룰을 우회합니다. 그래서 원본 요청을 바로
+            비교하지 않고, 정규화한 뒤 탐지와 검증을 반복합니다.
+          </p>
+          <div class="compare">
+            <div class="code-box">
+              <span class="badge">Before</span><br />
+              /search?q=%2555NiOn/**/SeLeCt<br />
+              &lt;script&gt;alert(1)&lt;/script&gt;<br />
+              <span class="muted">인코딩 · 대소문자 · 주석으로 난독화</span>
+            </div>
+            <div class="code-box">
+              <span class="badge">After Normalize</span><br />
+              union select<br />
+              script alert<br />
+              <span class="muted">URL Decode → Lowercase → Comment 제거</span>
+            </div>
+          </div>
+          <div class="pipeline" style="grid-template-columns: repeat(4, 1fr); margin-top: 26px">
+            <div class="step" style="min-height: 132px">
+              <div class="step-number">A</div>
+              <h3>Normalize</h3>
+              <p>우회 표현을 같은 의미의 토큰으로 정리합니다.</p>
+            </div>
+            <div class="step" style="min-height: 132px">
+              <div class="step-number">B</div>
+              <h3>Detect</h3>
+              <p>SQLi, XSS 같은 공격 징후를 점수화합니다.</p>
+            </div>
+            <div class="step" style="min-height: 132px">
+              <div class="step-number">C</div>
+              <h3>Validate</h3>
+              <p>ZAP과 샌드박스/홀드아웃 데이터로 오탐을 확인합니다.</p>
+            </div>
+            <div class="step" style="min-height: 132px">
+              <div class="step-number">D</div>
+              <h3>Deploy</h3>
+              <p>성능이 확인된 룰만 WAF에 배포합니다.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="5">
+        <div class="slide-inner">
+          <div class="label">Demo Evidence</div>
+          <h2 class="title" style="font-size: 42px">캡처 자료는 이 3개만 있으면 충분합니다</h2>
+          <div class="proof-grid">
+            <div class="proof">
+              <h3>1. ModSecurity 403 로그</h3>
+              <p>WAF가 실제 요청을 차단했다는 증거 화면입니다.</p>
+              <div class="terminal">
+                ModSecurity: Access denied<br />
+                HTTP status: 403<br />
+                Rule ID: 949110
+              </div>
+            </div>
+            <div class="proof">
+              <h3>2. 검증 결과 화면</h3>
+              <p>우회 공격 테스트와 정상 요청 오탐 검증을 통과했는지 보여줍니다.</p>
+              <div class="terminal">
+                attackDetectionRate: 94%<br />
+                falsePositiveRate: 1.2%<br />
+                holdoutPassed: true
+              </div>
+            </div>
+            <div class="proof">
+              <h3>3. 룰 배포 결과</h3>
+              <p>승인된 룰이 WAF에 적용되고 같은 공격이 차단되는 장면입니다.</p>
+              <div class="terminal">
+                status: ACTIVE<br />
+                deployedTarget: WAF<br />
+                rollbackReady: true
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const selectedSlide = new URLSearchParams(window.location.search).get("slide");
+
+      if (selectedSlide) {
+        document.body.classList.add("single-slide");
+        document.querySelectorAll(".slide").forEach((slide) => {
+          slide.hidden = slide.dataset.slide !== selectedSlide;
+        });
+      }
+    </script>
+  </body>
+</html>

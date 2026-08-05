@@ -17,7 +17,6 @@ import {
   X
 } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { BrandLogo } from "@/components/BrandLogo";
 import { formatDate } from "@/lib/display";
 import { platformApi } from "@/services/platformApi";
 import { useAuthStore } from "@/stores/authStore";
@@ -116,16 +115,12 @@ export function AdminLayout() {
       <div className="flex h-16 items-center justify-between border-b border-[#273244] px-4">
         <Link
           to="/dashboard"
-          className="flex items-center gap-3"
+          className="group flex items-center"
           onClick={() => setMenuOpen(false)}
         >
-          <BrandLogo className="size-9" />
-          <span>
-            <strong className="block text-sm tracking-[0.2em] text-white">ANVIL</strong>
-            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#64748b]">
-              Security operations
-            </span>
-          </span>
+          <strong className="text-[17px] font-black tracking-[0.3em] text-white transition-colors group-hover:text-[#c4c8ff]">
+            ANVIL
+          </strong>
         </Link>
         <button
           type="button"

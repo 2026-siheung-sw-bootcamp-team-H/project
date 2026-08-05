@@ -44,6 +44,17 @@ async function initializeRequestEventIndex() {
             attackCategories: { type: "keyword" },
             actions: { type: "keyword" },
             blocked: { type: "boolean" },
+            enforcements: {
+              type: "object",
+              properties: {
+                action: { type: "keyword" },
+                source: { type: "keyword" },
+                externalRuleId: { type: "keyword" },
+                ruleMessage: { type: "text" },
+                ruleTags: { type: "keyword" },
+                reason: { type: "text" }
+              }
+            },
             bodyPreview: { type: "text" },
             normalizedQuery: { type: "text" },
             normalizedBody: { type: "text" },
@@ -62,7 +73,18 @@ async function initializeRequestEventIndex() {
       body: {
         properties: {
           source: { type: "keyword" },
-          simulationId: { type: "keyword" }
+          simulationId: { type: "keyword" },
+          enforcements: {
+            type: "object",
+            properties: {
+              action: { type: "keyword" },
+              source: { type: "keyword" },
+              externalRuleId: { type: "keyword" },
+              ruleMessage: { type: "text" },
+              ruleTags: { type: "keyword" },
+              reason: { type: "text" }
+            }
+          }
         }
       }
     });
@@ -157,6 +179,14 @@ export async function processSearchOutbox(outboxId: string) {
       ],
       actions: [...new Set(event.enforcements.map((item) => item.action))],
       blocked: event.enforcements.some((item) => item.action === "BLOCK"),
+      enforcements: event.enforcements.map((item) => ({
+        action: item.action,
+        source: item.source,
+        externalRuleId: item.externalRuleId,
+        ruleMessage: item.ruleMessage,
+        ruleTags: item.ruleTags,
+        reason: item.reason
+      })),
       bodyPreview: event.sanitizedRequest?.bodyPreview,
       normalizedQuery: event.normalizedRequest?.normalizedQuery,
       normalizedBody: event.normalizedRequest?.normalizedBody,

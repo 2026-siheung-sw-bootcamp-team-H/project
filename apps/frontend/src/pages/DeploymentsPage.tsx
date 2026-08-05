@@ -88,9 +88,9 @@ export function DeploymentsPage() {
     enabled: Boolean(selectedId)
   });
   const securityScansQuery = useQuery({
-    queryKey: ["security-scans", ruleQuery.data?.protectedServiceId],
-    queryFn: () => platformApi.getSecurityScans(ruleQuery.data?.protectedServiceId),
-    enabled: Boolean(ruleQuery.data?.protectedServiceId),
+    queryKey: ["security-scans"],
+    queryFn: () => platformApi.getSecurityScans(),
+    enabled: Boolean(serviceId),
     refetchInterval: 5000
   });
   const comparisonQuery = useQuery({
@@ -137,6 +137,11 @@ export function DeploymentsPage() {
         navigate(`/scans/${result.scan.id}`);
       } else if ("securityScan" in result && result.securityScan) {
         navigate(`/scans/${result.securityScan.id}`);
+      }
+    },
+    onError: async (error) => {
+      if (platformApi.isApiError(error) && error.code === "ZAP_SCAN_ALREADY_RUNNING") {
+        await queryClient.invalidateQueries({ queryKey: ["security-scans"] });
       }
     }
   });
@@ -213,6 +218,18 @@ export function DeploymentsPage() {
   const shadowScan = securityScansQuery.data?.find(
     (scan) => scan.ruleId === rule.id && scan.stage === "shadow_verification"
   );
+  const activeZapScan = securityScansQuery.data?.find(
+    (scan) => !["completed", "failed"].includes(scan.status)
+  );
+  const zapBusyBeforeShadow = rule.status === "holdout_passed" && Boolean(activeZapScan);
+  const zapScanConflict =
+    action.isError &&
+    platformApi.isApiError(action.error) &&
+    action.error.code === "ZAP_SCAN_ALREADY_RUNNING";
+  const visibleMutationError =
+    (action.isError && !zapScanConflict ? action.error : null) ??
+    reject.error ??
+    shadowRescan.error;
   const waitingForShadowVerification =
     rule.status === "shadow_mode" && shadowScan?.status !== "completed";
 
@@ -223,7 +240,13 @@ export function DeploymentsPage() {
         title="방어 룰 배포 관리"
         description="먼저 요청을 차단하지 않는 Shadow 모드로 적용해 탐지 결과를 확인한 뒤, 관리자 승인 후 실제 차단으로 전환합니다."
         actions={
-          actionLabel ? (
+          zapBusyBeforeShadow && activeZapScan ? (
+            <Link to={`/scans/${activeZapScan.id}`} className={buttonSecondary}>
+              <Clock3 className="size-4" />
+              진단 진행 상황
+              <ArrowRight className="size-4" />
+            </Link>
+          ) : actionLabel ? (
             <button
               type="button"
               onClick={() => action.mutate()}
@@ -252,8 +275,28 @@ export function DeploymentsPage() {
           )
         }
       />
-      {(action.isError || reject.isError || shadowRescan.isError) && (
-        <ErrorState message={(action.error ?? reject.error ?? shadowRescan.error)?.message} />
+      {visibleMutationError && <ErrorState message={visibleMutationError.message} />}
+
+      {(zapBusyBeforeShadow || zapScanConflict) && (
+        <section className="flex flex-col gap-3 rounded-md border border-sky-400/20 bg-sky-400/[0.06] p-4 text-sm text-sky-100 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Clock3 className="mt-0.5 size-4 shrink-0 text-sky-300" />
+            <div>
+              <p className="font-semibold">다른 보안 진단을 처리하고 있습니다.</p>
+              <p className="mt-1 text-xs leading-5 text-sky-100/65">
+                이 룰은 검증을 통과했습니다. 현재 진단이 끝나면 Shadow 배포를 진행할 수 있습니다.
+              </p>
+            </div>
+          </div>
+          {activeZapScan && (
+            <Link
+              to={`/scans/${activeZapScan.id}`}
+              className="shrink-0 text-xs font-semibold text-sky-300 hover:text-sky-200"
+            >
+              진행 상황 보기 →
+            </Link>
+          )}
+        </section>
       )}
 
       {deploymentBlocked && (

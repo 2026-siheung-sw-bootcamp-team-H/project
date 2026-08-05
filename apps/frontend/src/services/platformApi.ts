@@ -63,7 +63,14 @@ type BackendRequestEvent = {
     matched?: boolean;
     reasons?: unknown;
   }>;
-  enforcements?: Array<{ action: string; source?: string | null }>;
+  enforcements?: Array<{
+    action: string;
+    source?: string | null;
+    externalRuleId?: string | null;
+    ruleMessage?: string | null;
+    ruleTags?: string[];
+    reason?: string | null;
+  }>;
   source?: string;
   simulationId?: string | null;
 };
@@ -263,6 +270,53 @@ function mapRequest(event: BackendRequestEvent): RequestLog {
   const attackDetection = event.detections?.find((item) => item.attackCategory);
   const detection = attackDetection ?? event.detections?.[0];
   const enforcement = event.enforcements?.[0];
+  const internalAnvilActions = new Map(
+    (event.enforcements ?? [])
+      .filter((item) => item.source === "INTERNAL_RULE" && item.externalRuleId)
+      .map((item) => [
+        item.externalRuleId as string,
+        item.action.toLowerCase() as "allow" | "monitor" | "block"
+      ])
+  );
+  const enforcementAttributions = [
+    ...new Map(
+      (event.enforcements ?? [])
+        .filter((item) => item.source && item.source !== "NONE")
+        .map((item) => {
+          const tags = (item.ruleTags ?? []).map((tag) => tag.toLowerCase());
+          const message = item.ruleMessage ?? item.reason ?? null;
+          const signatureId = message?.match(/\bSIG-[A-Z]+-\d+\b/i)?.[0]?.toUpperCase() ?? null;
+          const isAnvil =
+            tags.some((tag) => tag.includes("siheung-signature") || tag.includes("anvil")) ||
+            item.source === "INTERNAL_RULE" ||
+            Boolean(signatureId);
+          const isCrs =
+            item.source === "MODSECURITY" &&
+            (tags.some((tag) => tag.includes("owasp") || tag.includes("crs")) ||
+              /^9\d{5,}$/.test(item.externalRuleId ?? ""));
+          const type = isAnvil
+            ? ("anvil_signature" as const)
+            : isCrs
+              ? ("owasp_crs" as const)
+              : item.source === "MODSECURITY"
+                ? ("modsecurity" as const)
+                : ("internal_rule" as const);
+          const ruleId = signatureId ?? item.externalRuleId ?? null;
+          const action =
+            (isAnvil && ruleId ? internalAnvilActions.get(ruleId) : undefined) ??
+            (item.action.toLowerCase() as "allow" | "monitor" | "block");
+          return [
+            `${type}:${ruleId ?? "unknown"}`,
+            {
+              type,
+              action,
+              ruleId,
+              message
+            }
+          ] as const;
+        })
+    ).values()
+  ];
   const normalized = event.normalizedRequest;
   return {
     id: event.id,
@@ -288,6 +342,7 @@ function mapRequest(event: BackendRequestEvent): RequestLog {
     statusCode: event.responseStatus ?? 0,
     detectionReasons: asStringArray(detection?.reasons),
     enforcementSource: enforcement?.source ?? "탐지 엔진",
+    enforcementAttributions,
     source: (event.source?.toLowerCase() ?? "real") as RequestLog["source"],
     simulationId: event.simulationId ?? null
   };
@@ -358,10 +413,17 @@ function mapSample(value: NonNullable<BackendValidation["cases"]>[number]): Vali
 
 function mapValidation(run: BackendValidation): ValidationRun {
   const rounds = Array.isArray(run.rounds) ? run.rounds.map(mapRound) : [];
+  const firstRound =
+    Array.isArray(run.rounds) && run.rounds.length > 0 ? asRecord(run.rounds[0]) : {};
+  const initialMetrics = asRecord(firstRound.baseline);
   return {
     id: run.id,
     ruleId: run.ruleId,
     status: run.status.toLowerCase() as ValidationRun["status"],
+    initialAttackDetectionRate: Number(
+      initialMetrics.attackDetectionRate ?? run.attackDetectionRate
+    ),
+    initialBypassSuccessRate: Number(initialMetrics.bypassSuccessRate ?? run.bypassSuccessRate),
     attackDetectionRate: run.attackDetectionRate,
     falsePositiveRate: run.falsePositiveRate,
     bypassSuccessRate: run.bypassSuccessRate,
@@ -825,6 +887,45 @@ export const platformApi = {
       ? dashboard.nextAction
       : deriveDashboardNextAction(service, initialScan, latestRule);
     const riskLogs = logs.filter((log) => ["attack", "suspicious"].includes(log.classification));
+    const securityDecisionDistribution = [
+      {
+        name: "정상",
+        value: logs.filter((log) => log.classification === "normal").length,
+        color: "#94a3b8"
+      },
+      {
+        name: "의심",
+        value: logs.filter((log) => log.classification === "suspicious").length,
+        color: "#f59e0b"
+      },
+      {
+        name: "공격",
+        value: logs.filter((log) => log.classification === "attack").length,
+        color: "#fb7185"
+      },
+      {
+        name: "미분류",
+        value: logs.filter((log) => log.classification === "unknown").length,
+        color: "#475569"
+      }
+    ].filter((item) => item.value > 0);
+    const enforcementActionDistribution = [
+      {
+        name: "허용",
+        value: logs.filter((log) => log.action === "allowed").length,
+        color: "#94a3b8"
+      },
+      {
+        name: "관찰",
+        value: logs.filter((log) => log.action === "monitored").length,
+        color: "#a78bfa"
+      },
+      {
+        name: "차단",
+        value: logs.filter((log) => log.action === "blocked").length,
+        color: "#2dd4bf"
+      }
+    ].filter((item) => item.value > 0);
     return {
       service,
       requestCount: dashboard.requestCount,
@@ -853,6 +954,8 @@ export const platformApi = {
         ? mapValidation(dashboard.latestValidation)
         : null,
       hourlyRequests: aggregateHourly(logs),
+      securityDecisionDistribution,
+      enforcementActionDistribution,
       recentLogs: riskLogs.slice(0, 5)
     };
   },

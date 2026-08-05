@@ -52,6 +52,13 @@ export type ProtectedService = {
   scanCount: number;
 };
 
+export type EnforcementAttribution = {
+  type: "owasp_crs" | "anvil_signature" | "modsecurity" | "internal_rule";
+  action: "allow" | "monitor" | "block";
+  ruleId: string | null;
+  message: string | null;
+};
+
 export type RequestLog = {
   id: string;
   occurredAt: string;
@@ -68,6 +75,7 @@ export type RequestLog = {
   statusCode: number;
   detectionReasons: string[];
   enforcementSource: string;
+  enforcementAttributions: EnforcementAttribution[];
   source: "real" | "simulation" | "telemetry";
   simulationId: string | null;
 };
@@ -152,6 +160,8 @@ export type ValidationRun = {
   id: string;
   ruleId: string;
   status: ValidationStatus;
+  initialAttackDetectionRate: number;
+  initialBypassSuccessRate: number;
   attackDetectionRate: number;
   falsePositiveRate: number;
   bypassSuccessRate: number;

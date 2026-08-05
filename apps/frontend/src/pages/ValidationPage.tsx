@@ -23,6 +23,8 @@ export function ValidationPage() {
   if (isLoading) return <LoadingState label="샌드박스와 holdout 검증 결과를 불러오는 중입니다." />;
   if (isError || !run) return <ErrorState message="검증 결과를 찾지 못했습니다." />;
   const aiConfigured = Boolean(aiQuery.data?.enabled && aiQuery.data.configured);
+  const detectionDelta = (run.attackDetectionRate - run.initialAttackDetectionRate) * 100;
+  const bypassDelta = (run.bypassSuccessRate - run.initialBypassSuccessRate) * 100;
 
   return (
     <div className="space-y-7">
@@ -75,6 +77,59 @@ export function ValidationPage() {
           tone="success"
         />
       </div>
+
+      <section className="security-panel grid gap-5 rounded-md border-l-2 border-l-[#6366f1] p-5 lg:grid-cols-[minmax(220px,1fr)_minmax(420px,1.6fr)_minmax(220px,1fr)] lg:items-center">
+        <div>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#a5b4fc]">
+            Rule hardening impact
+          </p>
+          <h2 className="mt-2 text-lg font-semibold text-white">룰 보강 전·후 비교</h2>
+          <p className="mt-1 text-xs leading-5 text-[#9ca3af]">
+            최초 룰에서 시작해 채택된 보강 버전까지의 변화입니다.
+          </p>
+        </div>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <div className="rounded border border-[#273244] bg-[#0b0f19] p-4">
+            <p className="text-[10px] text-[#64748b]">최초 탐지율</p>
+            <p className="mt-2 font-mono text-2xl font-semibold text-[#cbd5e1]">
+              {formatPercent(run.initialAttackDetectionRate)}
+            </p>
+            <p className="mt-2 text-[10px] text-[#64748b]">
+              우회 {formatPercent(run.initialBypassSuccessRate)}
+            </p>
+          </div>
+          <ArrowRight className="size-5 text-[#6366f1]" />
+          <div className="rounded border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+            <p className="text-[10px] text-emerald-300/70">최종 탐지율</p>
+            <p className="mt-2 font-mono text-2xl font-semibold text-emerald-200">
+              {formatPercent(run.attackDetectionRate)}
+            </p>
+            <p className="mt-2 text-[10px] text-emerald-300/70">
+              우회 {formatPercent(run.bypassSuccessRate)}
+            </p>
+          </div>
+        </div>
+        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+          <div className="rounded border border-[#273244] bg-[#0b0f19] px-4 py-3">
+            <dt className="text-[10px] text-[#64748b]">탐지율 변화</dt>
+            <dd
+              className={`mt-1 font-mono text-lg font-semibold ${detectionDelta >= 0 ? "text-emerald-300" : "text-rose-300"}`}
+            >
+              {detectionDelta >= 0 ? "+" : ""}
+              {detectionDelta.toFixed(1)}%p
+            </dd>
+          </div>
+          <div className="rounded border border-[#273244] bg-[#0b0f19] px-4 py-3">
+            <dt className="text-[10px] text-[#64748b]">우회율 변화</dt>
+            <dd
+              className={`mt-1 font-mono text-lg font-semibold ${bypassDelta <= 0 ? "text-emerald-300" : "text-rose-300"}`}
+            >
+              {bypassDelta >= 0 ? "+" : ""}
+              {bypassDelta.toFixed(1)}%p
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       <section
         className={`security-panel grid gap-5 rounded-md border-l-2 p-5 md:grid-cols-[1fr_repeat(4,minmax(100px,160px))] md:items-center ${run.holdout?.passed ? "border-l-[#10b981]" : "border-l-[#f59e0b]"}`}
