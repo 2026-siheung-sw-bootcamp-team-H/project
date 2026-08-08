@@ -12,5 +12,6 @@ coverage
 .playwright-cli/
 .tmp/
 output/
+/docs/
 waf/rules/waf-reload-request.json
 waf/rules/waf-reload-status.json
